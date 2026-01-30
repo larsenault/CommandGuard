@@ -1,7 +1,7 @@
 //  CommandModels.swift
 //  CommandGuard
 //
-//  Shared command models and utilities for building control commands.
+//  Shared command models and utilities for building control commands. Includes the signature information. 
 
 import Foundation
 
@@ -50,3 +50,15 @@ public func iso8601Now() -> String {
     formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
     return formatter.string(from: Date())
 }
+public struct Signature: Codable {
+    public let alg: String
+    public let value: String
+    public let keyId: String
+
+    public init(alg: String, value: String, keyId: String) {
+        self.alg = alg
+        self.value = value
+        self.keyId = keyId
+    }
+}
+
