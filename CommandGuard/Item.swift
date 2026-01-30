@@ -1,9 +1,5 @@
-//
 //  Item.swift
 //  CommandGuard
-//
-//  Created by Luke Arsenault on 1/27/26.
-//
 
 import Foundation
 import SwiftData

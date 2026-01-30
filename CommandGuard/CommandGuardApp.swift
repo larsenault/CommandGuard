@@ -1,9 +1,5 @@
-//
 //  CommandGuardApp.swift
 //  CommandGuard
-//
-//  Created by Luke Arsenault on 1/27/26.
-//
 
 import SwiftUI
 import SwiftData
@@ -25,7 +21,7 @@ struct CommandGuardApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            HomeView()
         }
         .modelContainer(sharedModelContainer)
     }
