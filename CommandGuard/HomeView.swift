@@ -2,8 +2,11 @@
 //  CommandGuard
 
 import SwiftUI
+import Foundation
 
 struct HomeView: View {
+    @AppStorage("nextRequestId") private var nextRequestId: Int = 1001
+    @AppStorage("operatorId") private var operatorId: String = "operator-1234"
     @State private var temperatureSetpoint: Double = 22
     @State private var humiditySetpoint: Double = 40
     @State private var fanSpeed: Double = 50
@@ -48,13 +51,38 @@ struct HomeView: View {
                 }
                 Section {
                     Button {
-                        print("=== SEND COMMAND TAPPED ===")
-                        print("Temperature Setpoint: \(temperatureSetpoint)")
-                        print("Humidity Setpoint: \(humiditySetpoint)")
-                        print("Fan Speed: \(fanSpeed)")
-                        print("Valve Position: \(valvePosition)")
-                        print("Equipment Power: \(equipmentPower)")
-                        print("Control Enabled: \(controlEnabled)")
+                        // Build command body from current UI state
+                        let body = CommandBody(
+                            temperatureSetpointF: temperatureSetpoint,
+                            humiditySetpointPercent: humiditySetpoint,
+                            fanSpeedPercent: fanSpeed,
+                            valvePositionPercent: valvePosition,
+                            equipmentPower: equipmentPower,
+                            controlEnabled: controlEnabled
+                        )
+
+                        // Create envelope with timestamp and sequential requestId
+                        let envelope = CommandEnvelope(
+                            timestamp: iso8601Now(),
+                            requestId: nextRequestId,
+                            operatorId: operatorId,
+                            command: body
+                        )
+
+                        // Serialize to JSON and print for verification
+                        do {
+                            let encoder = JSONEncoder()
+                            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                            let data = try encoder.encode(envelope)
+                            if let jsonString = String(data: data, encoding: .utf8) {
+                                print("=== SEND COMMAND JSON ===\n\(jsonString)")
+                            }
+                        } catch {
+                            print("Failed to encode command: \(error)")
+                        }
+
+                        // Increment request id for next command
+                        nextRequestId += 1
                     } label: {
                         Text("Send Command")
                             .frame(maxWidth: .infinity)
