@@ -61,28 +61,39 @@ struct HomeView: View {
                             controlEnabled: controlEnabled
                         )
 
-                        // Create envelope with timestamp and sequential requestId
-                        let envelope = CommandEnvelope(
+                        // Create envelope with timestamp and sequential requestId (no signature yet)
+                        var envelope = CommandEnvelope(
                             timestamp: iso8601Now(),
                             requestId: nextRequestId,
                             operatorId: operatorId,
-                            command: body
+                            command: body,
+                            signature: nil
                         )
 
-                        // Serialize to JSON and print for verification
+                        // Canonically encode the envelope (without signature) for signing
                         do {
+                            let canonical = try encodeCanonicalEnvelope(envelope)
+
+                            // Sign the canonical bytes using ECDSA P-256 
+                            let signer = CryptoSigner()
+                            let (sigBase64, keyId) = try signer.sign(data: canonical)
+
+                            // Attach the signature to the envelope
+                            envelope.signature = Signature(alg: "ECDSA_P256_SHA256", value: sigBase64, keyId: keyId)
+
+                            // Serialize the fully signed envelope and print for verification
                             let encoder = JSONEncoder()
                             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
                             let data = try encoder.encode(envelope)
                             if let jsonString = String(data: data, encoding: .utf8) {
-                                print("=== SEND COMMAND JSON ===\n\(jsonString)")
+                                print("=== SEND COMMAND (SIGNED) ===\n\(jsonString)")
                             }
-                        } catch {
-                            print("Failed to encode command: \(error)")
-                        }
 
-                        // Increment request id for next command
-                        nextRequestId += 1
+                            // Increment request id for next command only after successful signing
+                            nextRequestId += 1
+                        } catch {
+                            print("Failed to sign or encode command: \(error)")
+                        }
                     } label: {
                         Text("Send Command")
                             .frame(maxWidth: .infinity)
