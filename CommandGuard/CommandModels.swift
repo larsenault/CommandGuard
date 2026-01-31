@@ -35,12 +35,14 @@ public struct CommandEnvelope: Codable {
     public let requestId: Int
     public let operatorId: String
     public let command: CommandBody
+    public var signature: Signature?
 
-    public init(timestamp: String, requestId: Int, operatorId: String, command: CommandBody) {
+    public init(timestamp: String, requestId: Int, operatorId: String, command: CommandBody, signature: Signature? = nil) {
         self.timestamp = timestamp
         self.requestId = requestId
         self.operatorId = operatorId
         self.command = command
+        self.signature = signature
     }
 }
 
