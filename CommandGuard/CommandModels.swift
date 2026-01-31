@@ -58,6 +58,15 @@ public func iso8601Now() -> String {
     return formatter.string(from: Date())
 }
 
+// Canonical JSON (sorted keys, no pretty print) for signing: envelope without signature.
+public func encodeCanonicalEnvelope(_ envelope: CommandEnvelope) throws -> Data {
+    var copy = envelope
+    copy.signature = nil // Exclude signature from the bytes-to-sign
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys]
+    return try encoder.encode(copy)
+}
+
 // Signature info embedded in the envelope (Option A).
 public struct Signature: Codable {
     public let alg: String  // e.g., "ECDSA_P256_SHA256"
