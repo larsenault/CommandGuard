@@ -25,7 +25,7 @@ public final class CryptoSigner {
     private let keyId: String
 
     // Initialize the signer with a Keychain tag and a key identifier (for server-side key selection)
-    public init(keyTag: String = "com.commandguard.signingkey", keyId: String = "app-01") {
+    public init(keyTag: String = "com.commandguard.signingkey", keyId: String = "Key-01") {
         self.keyTag = keyTag
         self.keyId = keyId
     }
@@ -99,3 +99,4 @@ public final class CryptoSigner {
         return try P256.Signing.PrivateKey(rawRepresentation: data)
     }
 }
+
