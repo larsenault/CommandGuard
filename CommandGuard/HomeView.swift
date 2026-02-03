@@ -61,11 +61,12 @@ struct HomeView: View {
                             controlEnabled: controlEnabled
                         )
 
-                        // Create envelope with timestamp and sequential requestId (no signature yet)
+                        // Create envelope with timestamp, nonce, and sequential requestId (no signature yet)
                         var envelope = CommandEnvelope(
                             timestamp: iso8601Now(),
                             requestId: nextRequestId,
                             operatorId: operatorId,
+                            nonce: makeNonceBase64(),
                             command: body,
                             signature: nil
                         )
