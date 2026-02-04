@@ -33,16 +33,12 @@ struct HomeView: View {
             ZStack {
                 VStack(spacing: 8) {
                     HStack {
-                        Picker("Section", selection: $selectedSection) {
+                        Picker(selection: $selectedSection) {
                             ForEach(HomeSection.allCases, id: \.self) { section in
                                 Text(section.title)
                                     .tag(section)
                             }
-                        }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                        .tint(.primary)
-                        .overlay {
+                        } label: {
                             HStack(spacing: 6) {
                                 Text(selectedSection.title)
                                     .font(.subheadline.weight(.semibold))
@@ -54,6 +50,8 @@ struct HomeView: View {
                             .background(.thinMaterial)
                             .clipShape(Capsule())
                         }
+                        .pickerStyle(.menu)
+                        .tint(.primary)
 
                         Spacer()
                     }
