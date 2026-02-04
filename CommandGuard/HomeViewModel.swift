@@ -146,12 +146,15 @@ final class HomeViewModel: ObservableObject {
 
     private func commandSummary(for command: CommandBody) -> String {
         let powerText = command.equipmentPower ? "Power ON" : "Power OFF"
+        let controlText = command.controlEnabled ? "Control Enabled" : "Control Disabled"
         return String(
-            format: "Temp %.1f, Fan %d, Valve %d, %@",
+            format: "Temp %.1f, Humidity %.1f, Fan %d, Valve %d, %@, %@",
             command.temperatureSetpointF,
+            command.humiditySetpointPercent,
             Int(command.fanSpeedPercent),
             Int(command.valvePositionPercent),
-            powerText
+            powerText,
+            controlText
         )
     }
 }
