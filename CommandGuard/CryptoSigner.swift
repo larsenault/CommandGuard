@@ -1,6 +1,11 @@
 //  CryptoSigner.swift
 //  CommandGuard
 //
+/*
+This file was developed with the assistance of generative AI tools.
+All AI-generated content was reviewed, tested for correctness, and verified by Luke Arsenault.
+*/
+
 //  ECDSA P-256 signer with a Keychain-backed private key. Generates or loads the key,
 //  signs data using CryptoKit, and returns a Base64-encoded DER signature along with a keyId.
 
@@ -8,13 +13,13 @@ import Foundation
 import CryptoKit
 import Security
 
-// Errors that can occur during key management and signing operations.
+// Errors that can occur during private key management and signing operations.
 public enum CryptoSignerError: Error {
-    case keyGenerationFailed           // Failed to generate a new private key
-    case keySaveFailed(OSStatus)       // Saving the private key to Keychain failed with status
-    case keyLoadFailed(OSStatus)       // Loading the private key from Keychain failed with status
-    case keyDataConversionFailed       // Key data retrieved from Keychain could not be converted to a private key
-    case signingFailed                 // Signing operation failed
+    case keyGenerationFailed
+    case keySaveFailed(OSStatus)
+    case keyLoadFailed(OSStatus)
+    case keyDataConversionFailed
+    case signingFailed
 }
 
 // CryptoSigner manages an ECDSA P-256 signing key in the Keychain and provides a method to sign data.
@@ -30,9 +35,9 @@ public final class CryptoSigner {
         self.keyId = keyId
     }
 
-    // Signs the provided data using ECDSA P-256 and returns a Base64 DER signature and keyId.
-    // - Parameter data: Canonical bytes to sign (e.g., sorted-keys JSON of the envelope without signature).
-    // - Returns: Tuple of (Base64 DER-encoded signature, keyId).
+    // Signs the provided data using ECDSA P-256 and returns a Base64 signature and keyId.
+    // - Parameter data: Canonical bytes to sign (sorted-keys JSON of the envelope without signature).
+    // - Returns: Tuple of (Base64 encoded signature, keyId).
     // - Throws: CryptoSignerError if key load/generation or signing fails.
     public func sign(data: Data) throws -> (String, String) {
         let privateKey = try loadOrCreatePrivateKey()

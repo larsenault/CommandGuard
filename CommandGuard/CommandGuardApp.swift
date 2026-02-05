@@ -1,5 +1,10 @@
 //  CommandGuardApp.swift
 //  CommandGuard
+//
+/*
+This file was developed with the assistance of generative AI tools.
+All AI-generated content was reviewed, tested for correctness, and verified by Luke Arsenault.
+*/
 
 import SwiftUI
 import SwiftData

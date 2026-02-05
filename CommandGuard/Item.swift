@@ -1,5 +1,7 @@
 //  Item.swift
 //  CommandGuard
+//
+// This file was built automatically with any new Xcode project. 
 
 import Foundation
 import SwiftData

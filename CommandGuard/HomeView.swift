@@ -1,15 +1,24 @@
 //  HomeView.swift
 //  CommandGuard
+//
+/*
+This file was developed with the assistance of generative AI tools.
+All AI-generated content was reviewed, tested for correctness, and verified by Luke Arsenault.
+*/
 
 import SwiftUI
 import Foundation
 
 struct HomeView: View {
+    // Persisted user context for request sequencing and operator identity.
     @AppStorage("nextRequestId") private var nextRequestId: Int = 1001
     @AppStorage("operatorId") private var operatorId: String = "operator-1234"
+    // View model drives form state, send status, and recent events.
     @StateObject private var viewModel = HomeViewModel()
+    // Top-level navigation within the home screen.
     @State private var selectedSection: HomeSection = .build
 
+    // Shared formatter for the recent-events list.
     private static let eventTimestampFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .none
@@ -17,6 +26,7 @@ struct HomeView: View {
         return formatter
     }()
 
+    // Maps the current send status to a UI color.
     private var statusColor: Color {
         switch viewModel.statusStyle {
         case .neutral:
@@ -32,6 +42,7 @@ struct HomeView: View {
         NavigationStack {
             ZStack {
                 VStack(spacing: 8) {
+                    // Section picker for switching between build and recent views.
                     HStack {
                         Picker(selection: $selectedSection) {
                             ForEach(HomeSection.allCases, id: \.self) { section in
@@ -59,6 +70,7 @@ struct HomeView: View {
 
                     switch selectedSection {
                     case .build:
+                        // Form for building and sending a command.
                         Form {
                             Section("Temperature Setpoint (°F)") {
                                 HStack {
@@ -89,10 +101,12 @@ struct HomeView: View {
                                 }
                             }
                             Section {
+                                // Binary command flags.
                                 Toggle("Equipment Power", isOn: $viewModel.equipmentPower)
                                 Toggle("Control Enabled", isOn: $viewModel.controlEnabled)
                             }
                             if viewModel.sendState == .sending, let statusTitle = viewModel.statusTitle {
+                                // Inline status while the command is being sent.
                                 Section {
                                     HStack(alignment: .top, spacing: 12) {
                                         ProgressView()
@@ -114,6 +128,7 @@ struct HomeView: View {
                                 }
                             }
                             Section {
+                                // Triggers the send operation and updates the request id on success.
                                 Button {
                                     Task {
                                         if let updatedRequestId = await viewModel.sendCommand(requestId: nextRequestId, operatorId: operatorId) {
@@ -129,6 +144,7 @@ struct HomeView: View {
                             }
                         }
                     case .recent:
+                        // Read-only timeline of recently sent commands.
                         RecentCommandsView(
                             events: viewModel.recentEvents,
                             timestampFormatter: Self.eventTimestampFormatter
@@ -137,6 +153,7 @@ struct HomeView: View {
                 }
 
                 if viewModel.showsResultPopup {
+                    // Modal-style overlay for final send result.
                     ZStack {
                         Color.black.opacity(0.25)
                             .ignoresSafeArea()
@@ -185,6 +202,7 @@ struct HomeView: View {
 }
 
 #Preview { HomeView() }
+// Top-level sections available in the HomeView picker.
 enum HomeSection: CaseIterable {
     case build
     case recent
