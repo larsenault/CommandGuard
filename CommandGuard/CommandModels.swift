@@ -67,25 +67,25 @@ public func iso8601Now() -> String {
 
 // Helper: cryptographically secure random nonce (Base64), default 16 bytes.
 public func makeNonceBase64(byteCount: Int = 16) -> String {
-    var bytes = [UInt8](repeating: 0, count: byteCount)
-    let status = SecRandomCopyBytes(kSecRandomDefault, byteCount, &bytes)
-    precondition(status == errSecSuccess, "Failed to generate nonce")
-    return Data(bytes).base64EncodedString()
+    var bytes = [UInt8](repeating: 0, count: byteCount) // Build a 16 byte array of 0's initially
+    let status = SecRandomCopyBytes(kSecRandomDefault, byteCount, &bytes) // Put 16 random numbers in place of the 0's from before. If succeeded mark true or false is fail
+    precondition(status == errSecSuccess, "Failed to generate nonce") // Check the status of from before and if success, continue. Else, give error message
+    return Data(bytes).base64EncodedString() // Return the 16 byte array as a 16 digit nonce base64 encoded
 }
 
 // Canonical JSON (sorted keys, no pretty print) for signing: envelope without signature.
 public func encodeCanonicalEnvelope(_ envelope: CommandEnvelope) throws -> Data {
-    var copy = envelope
+    var copy = envelope // Make a copy of the envelope to change
     copy.signature = nil // Exclude signature from the bytes-to-sign
     let encoder = JSONEncoder()
-    encoder.outputFormatting = [.sortedKeys]
-    return try encoder.encode(copy)
+    encoder.outputFormatting = [.sortedKeys] // Sort the JSON alphabetically every time
+    return try encoder.encode(copy) // Raw bytes of the JSON which I sign
 }
 
 // Signature info embedded in the envelope (Option A).
 public struct Signature: Codable {
-    public let alg: String  // e.g., "ECDSA_P256_SHA256"
-    public let value: String  // Base64 DER-encoded signature
+    public let alg: String  // ECDSA_P256_SHA256
+    public let value: String  // Base64 encoded signature
     public let keyId: String  // Which key to verify with
 
     // Memberwise initializer.
@@ -95,4 +95,3 @@ public struct Signature: Codable {
         self.keyId = keyId
     }
 }
-

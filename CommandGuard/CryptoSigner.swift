@@ -7,7 +7,7 @@ All AI-generated content was reviewed, tested for correctness, and verified by L
 */
 
 //  ECDSA P-256 signer with a Keychain-backed private key. Generates or loads the key,
-//  signs data using CryptoKit, and returns a Base64-encoded DER signature along with a keyId.
+//  signs data using CryptoKit, and returns a Base64-encoded signature along with a keyId.
 
 import Foundation
 import CryptoKit
@@ -43,7 +43,7 @@ public final class CryptoSigner {
         let privateKey = try loadOrCreatePrivateKey()
         // Sign the data with the private key (ECDSA P-256 + SHA-256 via CryptoKit)
         let signature = try privateKey.signature(for: data)
-        // DER-encoded signature by default; export raw (r||s) is not directly available from CryptoKit.
+        // Encoded signature by default
         let der = signature.derRepresentation
         // Return standard Base64 of the DER-encoded signature along with the key identifier
         let base64 = der.base64EncodedString()

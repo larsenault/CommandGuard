@@ -24,7 +24,7 @@ final class HomeViewModel: ObservableObject {
     @Published var lastResultTimestamp: Date? = nil
     @Published var recentEvents: [RecentEvent] = []
 
-    private let sendService = CommandSendService()
+    private let sendService = CommandSendResult.CommandSendService()
 
     var statusTitle: String? { sendState.statusText }
     var isSending: Bool { sendState.isSendDisabled }
