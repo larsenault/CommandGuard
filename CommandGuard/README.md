@@ -44,8 +44,14 @@ The iOS app simulates a mobile operator interface for a data center cooling syst
 
 Each command is canonicalized, signed (ECDSA P-256 / SHA-256), timestamped, nonced, and logged. Below are screenshots showing the UI of the iOS app. 
 
-![CommandGuard iOS Home Screen](images/ios-home.png)
-![CommandGuard Command History](images/ios-history.png)
+<a href="images/ios-home.png">
+  <img src="images/ios-home.png" width="500">
+</a>
+
+<a href="images/ios-history.png">
+  <img src="images/ios-history.png" width="500">
+</a>
+
 
 ---
 
