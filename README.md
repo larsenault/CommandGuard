@@ -95,6 +95,9 @@ Commands are evaluated against a simulated ICS state to ensure physical safety, 
 ├── CommandModels.swift          # Command body, envelope, signature models, and helpers
 ├── CryptoSigner.swift           # Keychain-backed ECDSA P-256 / SHA-256 signer
 ├── CommandSendService.swift     # Simulated gateway send/response logic
+├── GatewayService.swift         # Model for a discovered Bonjour gateway with stable IDs and display names
+├── BonjourBrowser.swift         # Bonjour browsing helper that discovers gateway services on the local network
+├── GatewayResponse.swift        # Response models for gateway delivery/execution status and NDJSON parsing
 ├── RecentCommandsView.swift     # Recent command history UI
 ├── SendStatus.swift             # Send state and status styling helpers
 ├── Item.swift                   # Default SwiftData model from the Xcode template
