@@ -72,6 +72,23 @@ struct HomeView: View {
                     case .build:
                         // Form for building and sending a command.
                         Form {
+                            Section("Gateway") {
+                                Picker("Gateway", selection: $viewModel.selectedGatewayId) {
+                                    Text("Select a gateway")
+                                        .tag(Optional<String>.none)
+                                    ForEach(viewModel.gateways) { gateway in
+                                        Text(gateway.displayName)
+                                            .tag(Optional(gateway.id))
+                                    }
+                                }
+                                .pickerStyle(.menu)
+
+                                if viewModel.gateways.isEmpty {
+                                    Text("No gateways found on the local network.")
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
                             Section("Temperature Setpoint (°F)") {
                                 HStack {
                                     Slider(value: $viewModel.temperatureSetpoint, in: 59...86, step: 0.1)
@@ -197,6 +214,12 @@ struct HomeView: View {
                 }
             }
             .navigationTitle("Datacenter Cooling")
+            .onAppear {
+                viewModel.startBrowsing()
+            }
+            .onDisappear {
+                viewModel.stopBrowsing()
+            }
         }
     }
 }
@@ -216,4 +239,3 @@ enum HomeSection: CaseIterable {
         }
     }
 }
-
