@@ -12,6 +12,7 @@ import Foundation
 
 @MainActor
 final class HomeViewModel: ObservableObject {
+    // UI inputs for building a command.
     @Published var temperatureSetpoint: Double = 22
     @Published var humiditySetpoint: Double = 40
     @Published var fanSpeed: Double = 50
@@ -19,13 +20,20 @@ final class HomeViewModel: ObservableObject {
     @Published var equipmentPower: Bool = false
     @Published var controlEnabled: Bool = true
 
+    // UI state for send progress and result display.
     @Published var sendState: SendState = .idle
     @Published var statusMessage: String? = nil
     @Published var lastResultTimestamp: Date? = nil
     @Published var recentEvents: [RecentEvent] = []
+    // Gateway discovery list and current selection.
+    @Published var gateways: [GatewayService] = []
+    @Published var selectedGatewayId: String? = nil
 
+    // Service that will transmit the signed envelope.
     private let sendService = CommandSendResult.CommandSendService()
+    private let browser = BonjourBrowser()
 
+    // Derived UI labels and flags.
     var statusTitle: String? { sendState.statusText }
     var isSending: Bool { sendState.isSendDisabled }
     var showsResultPopup: Bool {
@@ -38,16 +46,51 @@ final class HomeViewModel: ObservableObject {
     }
 
     var statusStyle: StatusStyle { sendState.statusStyle }
+    // Resolved gateway object for the currently selected picker id.
+    var selectedGateway: GatewayService? {
+        gateways.first { $0.id == selectedGatewayId }
+    }
 
+    // Starts browsing for gateways and updates the picker list.
+    func startBrowsing() {
+        browser.start { [weak self] services in
+            Task { @MainActor in
+                // Refresh the picker list with the latest Bonjour results.
+                self?.gateways = services
+                // Clear the selection if the chosen gateway disappears.
+                if let selectedId = self?.selectedGatewayId,
+                   services.contains(where: { $0.id == selectedId }) == false {
+                    self?.selectedGatewayId = nil
+                }
+            }
+        }
+    }
+
+    // Stops browsing to avoid unnecessary network activity.
+    func stopBrowsing() {
+        browser.stop()
+    }
+
+    // Builds, signs, encodes, and sends a command. Returns the next request id on success.
     func sendCommand(requestId: Int, operatorId: String) async -> Int? {
         guard !isSending else {
             return nil
         }
 
+        // Ensure the user picked a gateway before sending.
+        guard let gateway = selectedGateway else {
+            sendState = .failure(message: "No Gateway Selected")
+            statusMessage = "Select a gateway before sending a command."
+            lastResultTimestamp = Date()
+            return nil
+        }
+
+        // Reset UI status for a new send attempt.
         sendState = .sending
         statusMessage = nil
         lastResultTimestamp = nil
 
+        // Create the command body from UI inputs.
         let body = CommandBody(
             temperatureSetpointF: temperatureSetpoint,
             humiditySetpointPercent: humiditySetpoint,
@@ -57,6 +100,7 @@ final class HomeViewModel: ObservableObject {
             controlEnabled: controlEnabled
         )
 
+        // Construct the envelope that will be signed and transmitted.
         var updatedRequestId = requestId
         var envelope = CommandEnvelope(
             timestamp: iso8601Now(),
@@ -68,20 +112,75 @@ final class HomeViewModel: ObservableObject {
         )
 
         do {
+            // Sign the canonical envelope bytes.
             let canonical = try encodeCanonicalEnvelope(envelope)
             let signer = CryptoSigner()
             let (sigBase64, keyId) = try signer.sign(data: canonical)
             envelope.signature = Signature(alg: "ECDSA_P256_SHA256", value: sigBase64, keyId: keyId)
 
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(envelope)
-            if let jsonString = String(data: data, encoding: .utf8) {
+            // Encode the signed envelope as compact JSON for NDJSON transport.
+            let transportEncoder = JSONEncoder()
+            transportEncoder.outputFormatting = [.sortedKeys]
+            let data = try transportEncoder.encode(envelope)
+            // Log a pretty-printed version for prototype debugging.
+            let debugEncoder = JSONEncoder()
+            debugEncoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            if let jsonString = String(data: try debugEncoder.encode(envelope), encoding: .utf8) {
                 print("=== SEND COMMAND (SIGNED) ===\n\(jsonString)")
             }
 
+            // Send the signed NDJSON payload to the selected gateway.
+            let result = await sendService.send(
+                signedEnvelopeData: data,
+                command: body,
+                gateway: gateway
+            )
+            switch result {
+            case let .success(response):
+                // Update UI with success result.
+                let deliveryFailed = response.deliveryStatus == .failed
+                let executionFailed = response.executionStatus == .failed
+                let isSuccess = deliveryFailed == false && executionFailed == false
+                let statusPrefix: String
+                if deliveryFailed {
+                    statusPrefix = "Delivery failed"
+                } else if executionFailed {
+                    statusPrefix = "Command failed"
+                } else {
+                    statusPrefix = "Command succeeded"
+                }
+
+                sendState = isSuccess ? .success : .failure(message: "Failed")
+                statusMessage = response.message == nil ? statusPrefix : "\(statusPrefix): \(response.message ?? "")"
+
+                let displayTimestamp = response.gatewayTimestamp ?? response.receivedAt
+                lastResultTimestamp = displayTimestamp
+                appendRecentEvent(
+                    title: isSuccess ? "Success" : "Failed",
+                    details: response.message == nil ? statusPrefix : "\(statusPrefix): \(response.message ?? "")",
+                    timestamp: displayTimestamp,
+                    isSuccess: isSuccess,
+                    command: body
+                )
+            case let .failure(error):
+                // Update UI with failure result.
+                sendState = .failure(message: error.userTitle)
+                statusMessage = error.userMessage
+                lastResultTimestamp = Date()
+                appendRecentEvent(
+                    title: error.userTitle,
+                    details: error.userMessage,
+                    timestamp: Date(),
+                    isSuccess: false,
+                    command: body
+                )
+            }
+
+            // Advance request id only after a successful send attempt.
             updatedRequestId += 1
+            return updatedRequestId
         } catch {
+            // Capture signing or encoding failures.
             sendState = .failure(message: "Error")
             statusMessage = "Failed to sign or encode command"
             lastResultTimestamp = Date()
@@ -94,41 +193,15 @@ final class HomeViewModel: ObservableObject {
             )
             return nil
         }
-
-        let result = await sendService.send(command: body)
-        switch result {
-        case let .success(response):
-            sendState = .success
-            statusMessage = "Gateway accepted command"
-            lastResultTimestamp = response.receivedAt
-            appendRecentEvent(
-                title: "Success",
-                details: nil,
-                timestamp: response.receivedAt,
-                isSuccess: true,
-                command: body
-            )
-        case let .failure(error):
-            sendState = .failure(message: error.userTitle)
-            statusMessage = error.userMessage
-            lastResultTimestamp = Date()
-            appendRecentEvent(
-                title: error.userTitle,
-                details: error.userMessage,
-                timestamp: Date(),
-                isSuccess: false,
-                command: body
-            )
-        }
-
-        return updatedRequestId
     }
 
+    // Resets the popup state after the user dismisses it.
     func dismissPopup() {
         sendState = .idle
         statusMessage = nil
     }
 
+    // Adds an entry to the recent events list and trims the list size.
     private func appendRecentEvent(
         title: String,
         details: String?,
@@ -152,6 +225,7 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
+    // Builds a short, user-friendly summary string for the recent list.
     private func commandSummary(for command: CommandBody) -> String {
         let powerText = command.equipmentPower ? "Power ON" : "Power OFF"
         let controlText = command.controlEnabled ? "Control Enabled" : "Control Disabled"
@@ -167,6 +241,7 @@ final class HomeViewModel: ObservableObject {
     }
 }
 
+// Lightweight model for the recent commands list UI.
 struct RecentEvent: Identifiable {
     let id = UUID()
     let title: String
