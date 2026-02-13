@@ -7,6 +7,20 @@
 	objects = {
 
 /* Begin PBXContainerItemProxy section */
+		CC015F932F3EB000003275D7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CC6A0AA92F29B9FC00366880 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CC015F832F3EAFFE003275D7;
+			remoteInfo = CommandGuardGateway;
+		};
+		CC015F9D2F3EB001003275D7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CC6A0AA92F29B9FC00366880 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CC015F832F3EAFFE003275D7;
+			remoteInfo = CommandGuardGateway;
+		};
 		CC6A0AC12F29B9FD00366880 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = CC6A0AA92F29B9FC00366880 /* Project object */;
@@ -24,13 +38,16 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		CC015F842F3EAFFE003275D7 /* CommandGuardGateway.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CommandGuardGateway.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CC015F922F3EB000003275D7 /* CommandGuardGatewayTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CommandGuardGatewayTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CC015F9C2F3EB001003275D7 /* CommandGuardGatewayUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CommandGuardGatewayUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC6A0AB12F29B9FC00366880 /* CommandGuard.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CommandGuard.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC6A0AC02F29B9FD00366880 /* CommandGuardTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CommandGuardTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC6A0ACA2F29B9FD00366880 /* CommandGuardUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CommandGuardUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		CC0A4DA12F3C17CF008769CB /* Exceptions for "CommandGuard" folder in "CommandGuard" target */ = {
+		CC0A4DA12F3C17CF008769CB /* Exceptions for "CommandGuardApp" folder in "CommandGuard" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -40,12 +57,27 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		CC6A0AB32F29B9FC00366880 /* CommandGuard */ = {
+		CC015F852F3EAFFE003275D7 /* CommandGuardGateway */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CommandGuardGateway;
+			sourceTree = "<group>";
+		};
+		CC015F952F3EB001003275D7 /* CommandGuardGatewayTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CommandGuardGatewayTests;
+			sourceTree = "<group>";
+		};
+		CC015F9F2F3EB001003275D7 /* CommandGuardGatewayUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CommandGuardGatewayUITests;
+			sourceTree = "<group>";
+		};
+		CC6A0AB32F29B9FC00366880 /* CommandGuardApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				CC0A4DA12F3C17CF008769CB /* Exceptions for "CommandGuard" folder in "CommandGuard" target */,
+				CC0A4DA12F3C17CF008769CB /* Exceptions for "CommandGuardApp" folder in "CommandGuard" target */,
 			);
-			path = CommandGuard;
+			path = CommandGuardApp;
 			sourceTree = "<group>";
 		};
 		CC6A0AC32F29B9FD00366880 /* CommandGuardTests */ = {
@@ -61,6 +93,27 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		CC015F812F3EAFFE003275D7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC015F8F2F3EB000003275D7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC015F992F3EB001003275D7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		CC6A0AAE2F29B9FC00366880 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -88,9 +141,12 @@
 		CC6A0AA82F29B9FC00366880 = {
 			isa = PBXGroup;
 			children = (
-				CC6A0AB32F29B9FC00366880 /* CommandGuard */,
+				CC6A0AB32F29B9FC00366880 /* CommandGuardApp */,
 				CC6A0AC32F29B9FD00366880 /* CommandGuardTests */,
 				CC6A0ACD2F29B9FD00366880 /* CommandGuardUITests */,
+				CC015F852F3EAFFE003275D7 /* CommandGuardGateway */,
+				CC015F952F3EB001003275D7 /* CommandGuardGatewayTests */,
+				CC015F9F2F3EB001003275D7 /* CommandGuardGatewayUITests */,
 				CC6A0AB22F29B9FC00366880 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -101,6 +157,9 @@
 				CC6A0AB12F29B9FC00366880 /* CommandGuard.app */,
 				CC6A0AC02F29B9FD00366880 /* CommandGuardTests.xctest */,
 				CC6A0ACA2F29B9FD00366880 /* CommandGuardUITests.xctest */,
+				CC015F842F3EAFFE003275D7 /* CommandGuardGateway.app */,
+				CC015F922F3EB000003275D7 /* CommandGuardGatewayTests.xctest */,
+				CC015F9C2F3EB001003275D7 /* CommandGuardGatewayUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -108,6 +167,74 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		CC015F832F3EAFFE003275D7 /* CommandGuardGateway */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CC015FAA2F3EB001003275D7 /* Build configuration list for PBXNativeTarget "CommandGuardGateway" */;
+			buildPhases = (
+				CC015F802F3EAFFE003275D7 /* Sources */,
+				CC015F812F3EAFFE003275D7 /* Frameworks */,
+				CC015F822F3EAFFE003275D7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				CC015F852F3EAFFE003275D7 /* CommandGuardGateway */,
+			);
+			name = CommandGuardGateway;
+			packageProductDependencies = (
+			);
+			productName = CommandGuardGateway;
+			productReference = CC015F842F3EAFFE003275D7 /* CommandGuardGateway.app */;
+			productType = "com.apple.product-type.application";
+		};
+		CC015F912F3EB000003275D7 /* CommandGuardGatewayTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CC015FAB2F3EB001003275D7 /* Build configuration list for PBXNativeTarget "CommandGuardGatewayTests" */;
+			buildPhases = (
+				CC015F8E2F3EB000003275D7 /* Sources */,
+				CC015F8F2F3EB000003275D7 /* Frameworks */,
+				CC015F902F3EB000003275D7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CC015F942F3EB000003275D7 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				CC015F952F3EB001003275D7 /* CommandGuardGatewayTests */,
+			);
+			name = CommandGuardGatewayTests;
+			packageProductDependencies = (
+			);
+			productName = CommandGuardGatewayTests;
+			productReference = CC015F922F3EB000003275D7 /* CommandGuardGatewayTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		CC015F9B2F3EB001003275D7 /* CommandGuardGatewayUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CC015FAC2F3EB001003275D7 /* Build configuration list for PBXNativeTarget "CommandGuardGatewayUITests" */;
+			buildPhases = (
+				CC015F982F3EB001003275D7 /* Sources */,
+				CC015F992F3EB001003275D7 /* Frameworks */,
+				CC015F9A2F3EB001003275D7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CC015F9E2F3EB001003275D7 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				CC015F9F2F3EB001003275D7 /* CommandGuardGatewayUITests */,
+			);
+			name = CommandGuardGatewayUITests;
+			packageProductDependencies = (
+			);
+			productName = CommandGuardGatewayUITests;
+			productReference = CC015F9C2F3EB001003275D7 /* CommandGuardGatewayUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		CC6A0AB02F29B9FC00366880 /* CommandGuard */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = CC6A0AD42F29B9FD00366880 /* Build configuration list for PBXNativeTarget "CommandGuard" */;
@@ -121,7 +248,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				CC6A0AB32F29B9FC00366880 /* CommandGuard */,
+				CC6A0AB32F29B9FC00366880 /* CommandGuardApp */,
 			);
 			name = CommandGuard;
 			packageProductDependencies = (
@@ -183,9 +310,20 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2620;
+				LastSwiftUpdateCheck = 2630;
 				LastUpgradeCheck = 2630;
 				TargetAttributes = {
+					CC015F832F3EAFFE003275D7 = {
+						CreatedOnToolsVersion = 26.3;
+					};
+					CC015F912F3EB000003275D7 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = CC015F832F3EAFFE003275D7;
+					};
+					CC015F9B2F3EB001003275D7 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = CC015F832F3EAFFE003275D7;
+					};
 					CC6A0AB02F29B9FC00366880 = {
 						CreatedOnToolsVersion = 26.2;
 					};
@@ -216,11 +354,35 @@
 				CC6A0AB02F29B9FC00366880 /* CommandGuard */,
 				CC6A0ABF2F29B9FD00366880 /* CommandGuardTests */,
 				CC6A0AC92F29B9FD00366880 /* CommandGuardUITests */,
+				CC015F832F3EAFFE003275D7 /* CommandGuardGateway */,
+				CC015F912F3EB000003275D7 /* CommandGuardGatewayTests */,
+				CC015F9B2F3EB001003275D7 /* CommandGuardGatewayUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		CC015F822F3EAFFE003275D7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC015F902F3EB000003275D7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC015F9A2F3EB001003275D7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		CC6A0AAF2F29B9FC00366880 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -245,6 +407,27 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		CC015F802F3EAFFE003275D7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC015F8E2F3EB000003275D7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC015F982F3EB001003275D7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		CC6A0AAD2F29B9FC00366880 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -269,6 +452,16 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		CC015F942F3EB000003275D7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CC015F832F3EAFFE003275D7 /* CommandGuardGateway */;
+			targetProxy = CC015F932F3EB000003275D7 /* PBXContainerItemProxy */;
+		};
+		CC015F9E2F3EB001003275D7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CC015F832F3EAFFE003275D7 /* CommandGuardGateway */;
+			targetProxy = CC015F9D2F3EB001003275D7 /* PBXContainerItemProxy */;
+		};
 		CC6A0AC22F29B9FD00366880 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = CC6A0AB02F29B9FC00366880 /* CommandGuard */;
@@ -282,6 +475,160 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		CC015FA42F3EB001003275D7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N688RX2752;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Luke.CommandGuardGateway;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		CC015FA52F3EB001003275D7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N688RX2752;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Luke.CommandGuardGateway;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		CC015FA62F3EB001003275D7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N688RX2752;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Luke.CommandGuardGatewayTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CommandGuardGateway.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CommandGuardGateway";
+			};
+			name = Debug;
+		};
+		CC015FA72F3EB001003275D7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N688RX2752;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Luke.CommandGuardGatewayTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CommandGuardGateway.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CommandGuardGateway";
+			};
+			name = Release;
+		};
+		CC015FA82F3EB001003275D7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N688RX2752;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Luke.CommandGuardGatewayUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = CommandGuardGateway;
+			};
+			name = Debug;
+		};
+		CC015FA92F3EB001003275D7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N688RX2752;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Luke.CommandGuardGatewayUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = CommandGuardGateway;
+			};
+			name = Release;
+		};
 		CC6A0AD22F29B9FD00366880 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -558,6 +905,33 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		CC015FAA2F3EB001003275D7 /* Build configuration list for PBXNativeTarget "CommandGuardGateway" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CC015FA42F3EB001003275D7 /* Debug */,
+				CC015FA52F3EB001003275D7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CC015FAB2F3EB001003275D7 /* Build configuration list for PBXNativeTarget "CommandGuardGatewayTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CC015FA62F3EB001003275D7 /* Debug */,
+				CC015FA72F3EB001003275D7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CC015FAC2F3EB001003275D7 /* Build configuration list for PBXNativeTarget "CommandGuardGatewayUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CC015FA82F3EB001003275D7 /* Debug */,
+				CC015FA92F3EB001003275D7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		CC6A0AAC2F29B9FC00366880 /* Build configuration list for PBXProject "CommandGuard" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
