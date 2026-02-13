@@ -1,9 +1,10 @@
-//
 //  ContentView.swift
-//  CommandGuardGateway
+//  CommandGuard
 //
-//  Created by Luke Arsenault on 2/12/26.
-//
+/*
+This file was developed with the assistance of generative AI tools.
+All AI-generated content was reviewed, tested for correctness, and verified by Luke Arsenault.
+*/
 
 import SwiftUI
 
@@ -21,17 +22,17 @@ struct ContentView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
             // Box: received commands (parsed values).
-            DashboardBox(title: "Received Commands") {
+            DashboardBox(title: "Received Command:") {
                 ReceivedCommandsView(commands: inbox.commands)
             }
 
             // Box: recent commands (placeholder for later logic).
-            DashboardBox(title: "Recent Commands") {
+            DashboardBox(title: "Recent Commands:") {
                 PlaceholderBoxContent(text: "No recent command history yet.")
             }
 
             // Box: digital twin (placeholder for later integration).
-            DashboardBox(title: "Digital Twin") {
+            DashboardBox(title: "Digital Twin:") {
                 PlaceholderBoxContent(text: "Digital twin status will appear here.")
             }
         }
@@ -61,7 +62,7 @@ private struct DashboardBox<Content: View>: View {
             content
         }
         .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 320, maxHeight: 320, alignment: .leading)
         .background(Color(.windowBackgroundColor))
         .cornerRadius(8)
         .overlay(
@@ -111,7 +112,7 @@ private struct CommandRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             // Primary identifier line for quick scanning.
-            Text("Request \(command.requestId) • \(command.operatorId)")
+            Text("Request \(command.requestId) \(command.operatorId)")
                 .font(.headline)
             // Raw timestamp as provided by the envelope.
             Text(command.timestamp)
