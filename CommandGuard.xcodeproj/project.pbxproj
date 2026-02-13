@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		CC573F862F3EB260008DE966 /* CommandModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC573F752F3EB260008DE966 /* CommandModels.swift */; };
+		CC573FA82F3EB6B3008DE966 /* CommandModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC573F752F3EB260008DE966 /* CommandModels.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		CC015F932F3EB000003275D7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -41,6 +46,8 @@
 		CC015F842F3EAFFE003275D7 /* CommandGuardGateway.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CommandGuardGateway.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC015F922F3EB000003275D7 /* CommandGuardGatewayTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CommandGuardGatewayTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC015F9C2F3EB001003275D7 /* CommandGuardGatewayUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CommandGuardGatewayUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CC573F752F3EB260008DE966 /* CommandModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandModels.swift; sourceTree = "<group>"; };
+		CC573FA52F3EB3ED008DE966 /* GatewayCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayCommand.swift; sourceTree = "<group>"; };
 		CC6A0AB12F29B9FC00366880 /* CommandGuard.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CommandGuard.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC6A0AC02F29B9FD00366880 /* CommandGuardTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CommandGuardTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC6A0ACA2F29B9FD00366880 /* CommandGuardUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CommandGuardUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -138,6 +145,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		CC573FA42F3EB3E9008DE966 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				CC573FA52F3EB3ED008DE966 /* GatewayCommand.swift */,
+				CC573F752F3EB260008DE966 /* CommandModels.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
 		CC6A0AA82F29B9FC00366880 = {
 			isa = PBXGroup;
 			children = (
@@ -148,6 +164,7 @@
 				CC015F952F3EB001003275D7 /* CommandGuardGatewayTests */,
 				CC015F9F2F3EB001003275D7 /* CommandGuardGatewayUITests */,
 				CC6A0AB22F29B9FC00366880 /* Products */,
+				CC573FA42F3EB3E9008DE966 /* Shared */,
 			);
 			sourceTree = "<group>";
 		};
@@ -411,6 +428,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CC573FA82F3EB6B3008DE966 /* CommandModels.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -432,6 +450,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CC573F862F3EB260008DE966 /* CommandModels.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
