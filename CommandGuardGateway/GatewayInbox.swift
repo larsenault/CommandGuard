@@ -1,7 +1,15 @@
+//  GatewayInbox.swift
+//  CommandGuard
+//
+/*
+This file was developed with the assistance of generative AI tools.
+All AI-generated content was reviewed, tested for correctness, and verified by Luke Arsenault.
+*/
+
 import Foundation
+import Combine
 
 // Stores and manages decoded commands for the macOS gateway UI.
-@MainActor
 final class GatewayInbox: ObservableObject {
     // List of decoded command envelopes shown in the UI.
     @Published var commands: [CommandEnvelope]
@@ -11,8 +19,8 @@ final class GatewayInbox: ObservableObject {
         self.commands = commands
     }
 
-    // Attempts to decode raw JSON into a CommandEnvelope and prepends it to the list.
-    func append(rawJSON: String) {
+    // Attempt to decode raw JSON into a CommandEnvelope and add it to the beginning of the list.
+    @MainActor func append(rawJSON: String) {
         // Convert the incoming JSON string into UTF-8 data.
         guard let data = rawJSON.data(using: .utf8) else {
             return
@@ -46,20 +54,6 @@ final class GatewayInbox: ObservableObject {
                     valvePositionPercent: 40.0,
                     equipmentPower: true,
                     controlEnabled: true
-                )
-            ),
-            CommandEnvelope(
-                timestamp: "2026-02-13T15:20:42.901Z",
-                requestId: 1002,
-                operatorId: "operator-b",
-                nonce: "nonce-002",
-                command: CommandBody(
-                    temperatureSetpointF: 68.5,
-                    humiditySetpointPercent: 50.0,
-                    fanSpeedPercent: 35.0,
-                    valvePositionPercent: 25.0,
-                    equipmentPower: false,
-                    controlEnabled: false
                 )
             )
         ]
