@@ -11,13 +11,26 @@ import SwiftUI
 // Entry point for the macOS gateway app.
 @main
 struct CommandGuardGatewayApp: App {
-    // In-memory inbox used for the initial UI wiring.
-    private let inbox = GatewayInbox.sample()
+    // In-memory inbox used for live command ingestion.
+    private let inbox: GatewayInbox
+    // Listener responsible for accepting incoming network commands.
+    private let listener: GatewayListener
+
+    // Creates the inbox and listener once for the app lifecycle.
+    init() {
+        let inbox = GatewayInbox()
+        self.inbox = inbox
+        self.listener = GatewayListener(inbox: inbox)
+    }
 
     // Main window scene for the gateway.
     var body: some Scene {
         WindowGroup {
-            ContentView(inbox: inbox)
+            ContentView(inbox: inbox, listener: listener)
+                // Start listening as soon as the main window appears.
+                .onAppear {
+                    listener.start()
+                }
         }
     }
 }
