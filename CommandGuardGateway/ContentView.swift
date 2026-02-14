@@ -12,31 +12,57 @@ import SwiftUI
 struct ContentView: View {
     // Observable store that provides decoded commands for display.
     @StateObject private var inbox: GatewayInbox
+    // Observable listener that manages the network state.
+    @ObservedObject private var listener: GatewayListener
 
-    // Initializes the view with a provided inbox.
-    init(inbox: GatewayInbox) {
+    // Initializes the view with a provided inbox and listener.
+    init(inbox: GatewayInbox, listener: GatewayListener) {
         _inbox = StateObject(wrappedValue: inbox)
+        _listener = ObservedObject(wrappedValue: listener)
     }
 
     // Main UI layout for the macOS gateway dashboard.
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            // Box: received commands (parsed values).
-            DashboardBox(title: "Received Command:") {
-                ReceivedCommandsView(commands: inbox.commands)
-            }
+        VStack(alignment: .leading, spacing: 12) {
+            // Render listener status so operators can confirm the gateway is active.
+            Text(listenerStatusText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
-            // Box: recent commands (placeholder for later logic).
-            DashboardBox(title: "Recent Commands:") {
-                PlaceholderBoxContent(text: "No recent command history yet.")
-            }
+            HStack(alignment: .top, spacing: 16) {
+                // Box: received commands (parsed values).
+                DashboardBox(title: "Received Command:") {
+                    ReceivedCommandsView(commands: inbox.commands)
+                }
 
-            // Box: digital twin (placeholder for later integration).
-            DashboardBox(title: "Digital Twin:") {
-                PlaceholderBoxContent(text: "Digital twin status will appear here.")
+                // Box: recent commands (placeholder for later logic).
+                DashboardBox(title: "Recent Commands:") {
+                    PlaceholderBoxContent(text: "No recent command history yet.")
+                }
+
+                // Box: digital twin (placeholder for later integration).
+                DashboardBox(title: "Digital Twin:") {
+                    PlaceholderBoxContent(text: "Digital twin status will appear here.")
+                }
             }
         }
         .padding(16)
+    }
+
+    // Maps listener state into a concise status string for the UI.
+    private var listenerStatusText: String {
+        switch listener.state {
+        case .idle:
+            return "Listener: Idle"
+        case .starting:
+            return "Listener: Starting…"
+        case let .ready(port):
+            return "Listener: Ready on port \(port)"
+        case let .failed(message):
+            return "Listener: Failed (\(message))"
+        case .stopped:
+            return "Listener: Stopped"
+        }
     }
 }
 
@@ -148,5 +174,7 @@ private struct CommandValuesView: View {
 }
 
 #Preview {
-    ContentView(inbox: GatewayInbox.sample())
+    let inbox = GatewayInbox.sample()
+    let listener = GatewayListener(inbox: inbox)
+    return ContentView(inbox: inbox, listener: listener)
 }
