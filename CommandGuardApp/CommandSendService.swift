@@ -116,14 +116,15 @@ struct CommandSendResult {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 connection.stateUpdateHandler = { state in
                     Task { @MainActor in
-                        if resumeGate.tryResume() == false {
-                            return
-                        }
                         switch state {
                         case .ready:
-                            continuation.resume()
+                            if resumeGate.tryResume() {
+                                continuation.resume()
+                            }
                         case let .failed(error):
-                            continuation.resume(throwing: CommandSendError.network(reason: error.localizedDescription))
+                            if resumeGate.tryResume() {
+                                continuation.resume(throwing: CommandSendError.network(reason: error.localizedDescription))
+                            }
                         default:
                             break
                         }
