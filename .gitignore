@@ -1,1 +1,9 @@
 CommandGuard.xcodeproj/xcuserdata/
+
+# Xcode user/workspace metadata
+*.xcuserdatad/
+*.xcuserdata/
+*.xccheckout
+*.xcscmblueprint
+**/project.xcworkspace/xcuserdata/
+**/project.xcworkspace/contents.xcworkspacedata
