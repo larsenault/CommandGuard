@@ -1,7 +1,10 @@
 //  GatewayResponse.swift
 //  CommandGuard
 //
-//
+/*
+This file was developed with the assistance of generative AI tools.
+All AI-generated content was reviewed, tested for correctness, and verified by Luke Arsenault.
+*/
 //  Models the response payload returned by the gateway.
 
 import Foundation
