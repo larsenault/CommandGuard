@@ -101,6 +101,13 @@ Commands are evaluated against a simulated ICS state to ensure physical safety, 
 ├── RecentCommandsView.swift     # Recent command history UI
 ├── SendStatus.swift             # Send state and status styling helpers
 ├── Item.swift                   # Default SwiftData model from the Xcode template
+├── CommandGuardGatewayApp.swift # macOS gateway app entry point
+├── ContentView.swift            # macOS gateway UI (status + inbox)
+├── GatewayInbox.swift           # Stores decoded commands for display
+├── GatewayListener.swift        # TCP listener that receives NDJSON commands
+├── GatewaySignatureVerifier.swift # Verifies signed command envelopes
+├── GatewayKeyStore.swift        # Trusted public keys for verification
+├── GatewayResponse.swift        # Gateway response payload model
 └── images/                      # README screenshots
 ```
 
