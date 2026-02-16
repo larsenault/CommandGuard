@@ -1,6 +1,7 @@
 //  HomeView.swift
 //  CommandGuard
 //
+//
 /*
 This file was developed with the assistance of generative AI tools.
 All AI-generated content was reviewed, tested for correctness, and verified by Luke Arsenault.
@@ -11,20 +12,19 @@ import Foundation
 
 struct HomeView: View {
     // Persisted user context for request sequencing and operator identity.
-    @AppStorage("nextRequestId") private var nextRequestId: Int = 1001
-    @AppStorage("operatorId") private var operatorId: String = "operator-1234"
+    @AppStorage("nextRequestId") private var nextRequestId: Int = 1000
+    @AppStorage("operatorId") private var operatorId: String = "Luke-Arsenault"
     // View model drives form state, send status, and recent events.
     @StateObject private var viewModel = HomeViewModel()
     // Top-level navigation within the home screen.
     @State private var selectedSection: HomeSection = .build
 
-    // Shared formatter for the recent-events list.
-    private static let eventTimestampFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .none
-        formatter.timeStyle = .medium
-        return formatter
-    }()
+    // Shared formatter for the recent-events list (ISO 8601).
+    private static let eventTimestampFormatter: (Date) -> String = { date in
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: date)
+    }
 
     // Maps the current send status to a UI color.
     private var statusColor: Color {
