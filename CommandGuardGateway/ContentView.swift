@@ -7,17 +7,18 @@ All AI-generated content was reviewed, tested for correctness, and verified by L
 */
 
 import SwiftUI
+import Foundation
 
 // Root view that shows three primary boxes: received commands, recent commands, and digital twin.
 struct ContentView: View {
     // Observable store that provides decoded commands for display.
-    @StateObject private var inbox: GatewayInbox
+    @ObservedObject private var inbox: GatewayInbox
     // Observable listener that manages the network state.
     @ObservedObject private var listener: GatewayListener
 
     // Initializes the view with a provided inbox and listener.
     init(inbox: GatewayInbox, listener: GatewayListener) {
-        _inbox = StateObject(wrappedValue: inbox)
+        _inbox = ObservedObject(wrappedValue: inbox)
         _listener = ObservedObject(wrappedValue: listener)
     }
 
@@ -25,19 +26,29 @@ struct ContentView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Render listener status so operators can confirm the gateway is active.
-            Text(listenerStatusText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack {
+                Text(listenerStatusText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Button("Reset Request ID") {
+                    listener.resetValidationState()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
 
             HStack(alignment: .top, spacing: 16) {
-                // Box: received commands (parsed values).
+                // Box: received commands (latest only).
                 DashboardBox(title: "Received Command:") {
-                    ReceivedCommandsView(commands: inbox.commands)
+                    ReceivedCommandView(command: inbox.latestCommand)
                 }
 
-                // Box: recent commands (placeholder for later logic).
+                // Box: recent commands (last 10).
                 DashboardBox(title: "Recent Commands:") {
-                    PlaceholderBoxContent(text: "No recent command history yet.")
+                    RecentCommandsView(records: inbox.recentCommands)
                 }
 
                 // Box: digital twin (placeholder for later integration).
@@ -84,11 +95,12 @@ private struct DashboardBox<Content: View>: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
                 .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .center)
 
             content
         }
         .padding(12)
-        .frame(maxWidth: .infinity, minHeight: 320, maxHeight: 320, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 320, maxHeight: 320, alignment: .topLeading)
         .background(Color(.windowBackgroundColor))
         .cornerRadius(8)
         .overlay(
@@ -98,25 +110,66 @@ private struct DashboardBox<Content: View>: View {
     }
 }
 
-// Scrollable list of received command rows.
-private struct ReceivedCommandsView: View {
-    // Commands to render in the list.
-    let commands: [CommandEnvelope]
+// Shows only the most recently received command.
+private struct ReceivedCommandView: View {
+    // Latest command to render (if available).
+    let command: CommandEnvelope?
 
-    // Layout for the received command list.
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 8) {
-                ForEach(Array(commands.enumerated()), id: \.offset) { _, command in
-                    CommandRow(command: command)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+        Group {
+            if let command {
+                CommandRow(command: command)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                PlaceholderBoxContent(text: "No commands received yet.")
             }
-            .padding(.vertical, 4)
         }
     }
 }
 
+// Scrollable list of recent command rows (newest first).
+private struct RecentCommandsView: View {
+    // Commands to render in the list.
+    let records: [GatewayInbox.CommandRecord]
+
+    var body: some View {
+        if records.isEmpty {
+            PlaceholderBoxContent(text: "No recent command history yet.")
+        } else {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 8) {
+                    ForEach(records) { record in
+                        RecentCommandRow(record: record)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+    }
+}
+
+// Renders a command row with a status header for accepted/rejected attempts.
+private struct RecentCommandRow: View {
+    let record: GatewayInbox.CommandRecord
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Text(record.status == .accepted ? "Accepted" : "Rejected")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(record.status == .accepted ? .green : .red)
+                if let message = record.message, record.status == .rejected {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            CommandRow(command: record.envelope)
+        }
+    }
+}
 // Placeholder text used for unfinished boxes.
 private struct PlaceholderBoxContent: View {
     // Placeholder text to display.
@@ -126,6 +179,10 @@ private struct PlaceholderBoxContent: View {
     var body: some View {
         Text(text)
             .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .frame(maxHeight: .infinity, alignment: .top)
+            .padding(.top, 4)
     }
 }
 
