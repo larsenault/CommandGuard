@@ -30,6 +30,8 @@ final class GatewayListener: ObservableObject {
     private let queue = DispatchQueue(label: "CommandGuard.GatewayListener")
     // Signature verifier used to validate incoming command envelopes.
     private let verifier: GatewaySignatureVerifier
+    // Command validator enforcing schema, sequencing, and replay rules.
+    private let commandValidator: GatewayCommandValidator
     // Active TCP listener instance (nil when stopped).
     private var listener: NWListener?
 
@@ -37,6 +39,7 @@ final class GatewayListener: ObservableObject {
     init(inbox: GatewayInbox, verifier: GatewaySignatureVerifier = GatewaySignatureVerifier()) {
         self.inbox = inbox
         self.verifier = verifier
+        self.commandValidator = GatewayCommandValidator()
     }
 
     // Starts listening and advertising a Bonjour service for discovery.
@@ -65,6 +68,13 @@ final class GatewayListener: ObservableObject {
         listener?.cancel()
         listener = nil
         updateState(.stopped)
+    }
+
+    // Resets validation state (request id, timestamps, nonces) for testing.
+    func resetValidationState() {
+        Task {
+            await commandValidator.resetState()
+        }
     }
 
     // Translates Network framework state changes into our simplified state.
@@ -105,18 +115,25 @@ final class GatewayListener: ObservableObject {
     private func receiveCommand(from connection: NWConnection) {
         Task.detached { [weak self] in
             guard let self else { return }
+            var payload: Data?
             do {
-                let payload = try await self.receiveNDJSONLine(from: connection)
-                // Preserve raw JSON for UI display even after decoding.
-                let commandJSON = String(decoding: payload, as: UTF8.self)
-                let envelope = try await MainActor.run {
-                    let decoder = JSONDecoder()
-                    return try decoder.decode(CommandEnvelope.self, from: payload)
+                payload = try await self.receiveNDJSONLine(from: connection)
+                guard let payload else {
+                    throw NSError(
+                        domain: "CommandGuard.GatewayListener",
+                        code: -2,
+                        userInfo: [NSLocalizedDescriptionKey: "Empty command payload"]
+                    )
                 }
+                // Decode + validate schema/state before signature verification.
+                let envelope = try await self.commandValidator.decodeAndValidate(payload: payload, now: Date())
+                // Verify signature before showing the command.
                 try await MainActor.run {
-                    // Verify signature before showing the command.
                     try self.verifier.verify(envelope: envelope)
-                    self.inbox.append(rawJSON: commandJSON)
+                }
+                await MainActor.run {
+                    // Only append after all validation and verification succeed.
+                    self.inbox.appendAccepted(envelope: envelope)
                 }
                 let successTimestamp = await MainActor.run { iso8601Now() }
                 let response = GatewayResponse(
@@ -128,6 +145,16 @@ final class GatewayListener: ObservableObject {
                 )
                 try await self.sendResponse(response, over: connection)
             } catch {
+                if let payload {
+                    let envelope = await MainActor.run {
+                        try? JSONDecoder().decode(CommandEnvelope.self, from: payload)
+                    }
+                    if let envelope {
+                        await MainActor.run {
+                            self.inbox.appendRejected(envelope: envelope, message: error.localizedDescription)
+                        }
+                    }
+                }
                 // Report failure to the sender while keeping the gateway alive.
                 let failureTimestamp = await MainActor.run { iso8601Now() }
                 let response = GatewayResponse(
