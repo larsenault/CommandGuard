@@ -10,7 +10,7 @@ import SwiftUI
 
 struct RecentCommandsView: View {
     let events: [RecentEvent]
-    let timestampFormatter: DateFormatter
+    let timestampFormatter: (Date) -> String
 
     var body: some View {
         Form {
@@ -30,7 +30,7 @@ struct RecentCommandsView: View {
 
                                 Spacer()
 
-                                Text(timestampFormatter.string(from: event.timestamp))
+                                Text(timestampFormatter(event.timestamp))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -56,11 +56,10 @@ struct RecentCommandsView: View {
 #Preview {
     RecentCommandsView(
         events: [],
-        timestampFormatter: {
-            let formatter = DateFormatter()
-            formatter.dateStyle = .none
-            formatter.timeStyle = .medium
-            return formatter
-        }()
+        timestampFormatter: { date in
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            return formatter.string(from: date)
+        }
     )
 }
