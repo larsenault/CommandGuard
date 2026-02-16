@@ -22,7 +22,7 @@ actor GatewayCommandValidator {
     private let nonceCapacity: Int
     private var nonces: [NonceEntry] = []
 
-    // Persisted state keys (UserDefaults option A).
+    // Persisted state keys
     private let lastRequestIdKey = "CommandGuard.Gateway.LastRequestId"
     private let lastTimestampKey = "CommandGuard.Gateway.LastTimestamp"
     private let lastSeenTimestampKey = "CommandGuard.Gateway.LastSeenTimestamp"
