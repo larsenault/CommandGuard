@@ -162,6 +162,11 @@ final class HomeViewModel: ObservableObject {
                     isSuccess: isSuccess,
                     command: body
                 )
+
+                // Advance after any gateway response that includes a request id.
+                if response.requestId > 0 {
+                    updatedRequestId = response.requestId + 1
+                }
             case let .failure(error):
                 // Update UI with failure result.
                 sendState = .failure(message: error.userTitle)
@@ -176,8 +181,7 @@ final class HomeViewModel: ObservableObject {
                 )
             }
 
-            // Advance request id only after a successful send attempt.
-            updatedRequestId += 1
+            // Keep request id in sync with gateway acceptance rules.
             return updatedRequestId
         } catch {
             // Capture signing or encoding failures.
@@ -199,6 +203,11 @@ final class HomeViewModel: ObservableObject {
     func dismissPopup() {
         sendState = .idle
         statusMessage = nil
+    }
+
+    // Clears the recent event history in the UI.
+    func clearRecentEvents() {
+        recentEvents.removeAll()
     }
 
     // Adds an entry to the recent events list and trims the list size.
