@@ -26,15 +26,12 @@ struct CommandSendResult {
     
     // Defines all possible errors that can occur when sending a command.
     enum CommandSendError: Error {
-        case rejected(reason: String)
         case network(reason: String)
         case internalError(reason: String)
         
         // Title for displaying in the UI (e.g., alert header).
         var userTitle: String {
             switch self {
-            case .rejected:
-                return "Rejected"
             case .network:
                 return "Network Error"
             case .internalError:
@@ -45,7 +42,7 @@ struct CommandSendResult {
         // Detailed message explaining what went wrong.
         var userMessage: String {
             switch self {
-            case let .rejected(reason), let .network(reason), let .internalError(reason):
+            case let .network(reason), let .internalError(reason):
                 return reason
             }
         }
@@ -59,15 +56,7 @@ struct CommandSendResult {
             command: CommandBody,
             gateway: GatewayService
         ) async -> Result<CommandSendResult, CommandSendError> {
-            // Validate basic command constraints before hitting the network.
-            if command.valvePositionPercent > 90 {
-                return .failure(.rejected(reason: "Rejected: valve position above 90%"))
-            } // Reject unsafe valve positions above 90%.
-
-            if command.equipmentPower, command.fanSpeedPercent < 5 {
-                return .failure(.rejected(reason: "Rejected: fan speed too low for power ON"))
-            } // Reject powering equipment ON if fan speed is too low.
-
+            // Always send to the gateway; validation happens server-side.
             do {
                 let response = try await sendAndReceiveNDJSON(
                     signedEnvelopeData: signedEnvelopeData,
