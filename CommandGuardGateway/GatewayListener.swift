@@ -74,6 +74,9 @@ final class GatewayListener: ObservableObject {
     func resetValidationState() {
         Task {
             await commandValidator.resetState()
+            await MainActor.run {
+                inbox.clearHistory()
+            }
         }
     }
 
@@ -145,20 +148,23 @@ final class GatewayListener: ObservableObject {
                 )
                 try await self.sendResponse(response, over: connection)
             } catch {
+                var rejectedRequestId: Int? = nil
                 if let payload {
                     let envelope = await MainActor.run {
                         try? JSONDecoder().decode(CommandEnvelope.self, from: payload)
                     }
                     if let envelope {
+                        rejectedRequestId = envelope.requestId
                         await MainActor.run {
                             self.inbox.appendRejected(envelope: envelope, message: error.localizedDescription)
                         }
+                        await self.commandValidator.recordRejectedRequestId(envelope.requestId)
                     }
                 }
                 // Report failure to the sender while keeping the gateway alive.
                 let failureTimestamp = await MainActor.run { iso8601Now() }
                 let response = GatewayResponse(
-                    id: -1,
+                    id: rejectedRequestId ?? -1,
                     deliveryStatus: .failed,
                     executionStatus: .failed,
                     message: "Rejected: \(error.localizedDescription)",
