@@ -62,6 +62,11 @@ actor GatewayCommandValidator {
         nonces.removeAll()
     }
 
+    // Records a rejected request id so sequencing keeps advancing even on failure.
+    func recordRejectedRequestId(_ requestId: Int) {
+        saveLastRequestId(requestId)
+    }
+
     // Enforces allowed operator, monotonic timestamps, request sequencing, and nonce reuse.
     private func validateStateful(envelope: CommandEnvelope, timestamp: Date, now: Date) throws {
         // Reject commands from unexpected operators.
