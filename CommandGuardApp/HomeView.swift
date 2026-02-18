@@ -18,6 +18,8 @@ struct HomeView: View {
     @StateObject private var viewModel = HomeViewModel()
     // Top-level navigation within the home screen.
     @State private var selectedSection: HomeSection = .build
+    // Confirmation state for resetting request id and history.
+    @State private var showsResetConfirmation: Bool = false
 
     // Shared formatter for the recent-events list (ISO 8601).
     private static let eventTimestampFormatter: (Date) -> String = { date in
@@ -159,6 +161,24 @@ struct HomeView: View {
                                 .disabled(viewModel.isSending)
                                 .opacity(viewModel.isSending ? 0.7 : 1)
                             }
+                            Section {
+                                Button {
+                                    showsResetConfirmation = true
+                                } label: {
+                                    Text("Reset Request ID")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .disabled(viewModel.isSending)
+                            }
+                        }
+                        .alert("Reset Request ID?", isPresented: $showsResetConfirmation) {
+                            Button("Reset and Clear History", role: .destructive) {
+                                nextRequestId = 1000
+                                viewModel.clearRecentEvents()
+                            }
+                            Button("Cancel", role: .cancel) { }
+                        } message: {
+                            Text("This resets the request sequence to 1000 and clears recent commands.")
                         }
                     case .recent:
                         // Read-only timeline of recently sent commands.
