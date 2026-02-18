@@ -64,6 +64,12 @@ final class GatewayInbox: ObservableObject {
         insertRecent(envelope: envelope, status: .rejected, message: message)
     }
 
+    // Clears the latest and recent command history.
+    @MainActor func clearHistory() {
+        latestCommand = nil
+        recentCommands.removeAll()
+    }
+
     private func insertRecent(envelope: CommandEnvelope, status: CommandStatus, message: String?) {
         let record = CommandRecord(
             envelope: envelope,
