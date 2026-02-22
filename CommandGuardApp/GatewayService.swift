@@ -2,6 +2,11 @@
 //  CommandGuard
 //
 //
+/*
+This file was developed with the assistance of the generative AI tool ChatGPT. All pieces of this file have been assisted by AI.
+All AI-generated content was reviewed for understanding and cleanliness, tested for correctness and expected results,
+and verified by Luke Arsenault.
+*/
 //  Represents a discovered Bonjour service for the gateway picker.
 
 import Foundation

@@ -3,8 +3,9 @@
 //
 //
 /*
-This file was developed with the assistance of generative AI tools.
-All AI-generated content was reviewed, tested for correctness, and verified by Luke Arsenault.
+This file was developed with the assistance of the generative AI tool ChatGPT. All pieces of this file have been assisted by AI.
+All AI-generated content was reviewed for understanding and cleanliness, tested for correctness and expected results,
+and verified by Luke Arsenault.
 */
 
 import SwiftUI
