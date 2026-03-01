@@ -52,9 +52,9 @@ struct ContentView: View {
                     RecentCommandsView(records: inbox.recentCommands)
                 }
 
-                // Box: digital twin (placeholder for later integration).
+                // Box: digital twin (current state + last prediction result).
                 DashboardBox(title: "Digital Twin:") {
-                    PlaceholderBoxContent(text: "Digital twin status will appear here.")
+                    DigitalTwinStatusView(status: inbox.twinStatus)
                 }
             }
         }
@@ -171,6 +171,60 @@ private struct RecentCommandRow: View {
         }
     }
 }
+
+// Shows current twin state and latest prediction horizon summary.
+private struct DigitalTwinStatusView: View {
+    let status: GatewayInbox.TwinStatus?
+
+    private static let timestampFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .medium
+        return formatter
+    }()
+
+    var body: some View {
+        guard let status else {
+            return AnyView(PlaceholderBoxContent(text: "No digital twin data yet."))
+        }
+
+        return AnyView(
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(status.currentStateSafe ? .green : .red)
+                        .frame(width: 8, height: 8)
+                    Text(status.currentStateSafe ? "Current state: Safe" : "Current state: Unsafe")
+                        .font(.caption.weight(.semibold))
+                }
+
+                Text(String(format: "Current Temp: %.2f°F", status.currentState.temperatureF))
+                Text(String(format: "Current Humidity: %.2f%%", status.currentState.humidityPercent))
+
+                Divider()
+
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(status.forecastSafe ? .green : .red)
+                        .frame(width: 8, height: 8)
+                    Text(status.forecastSafe ? "Forecast: Safe" : "Forecast: Unsafe")
+                        .font(.caption.weight(.semibold))
+                }
+                Text(String(format: "Horizon: %.0f seconds", status.forecastHorizonSeconds))
+                Text(String(format: "Forecast Temp @ End: %.2f°F", status.forecastEndState.temperatureF))
+                Text(String(format: "Forecast Humidity @ End: %.2f%%", status.forecastEndState.humidityPercent))
+
+                Divider()
+
+                Text("Updated: \(Self.timestampFormatter.string(from: status.updatedAt))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .font(.caption)
+        )
+    }
+}
+
 // Placeholder text used for unfinished boxes.
 private struct PlaceholderBoxContent: View {
     // Placeholder text to display.
