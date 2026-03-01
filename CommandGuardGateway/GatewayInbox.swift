@@ -25,15 +25,27 @@ final class GatewayInbox: ObservableObject {
         let receivedAt: Date
     }
 
+    struct TwinStatus {
+        let currentState: DigitalTwinState
+        let currentStateSafe: Bool
+        let forecastEndState: DigitalTwinState
+        let forecastSafe: Bool
+        let forecastHorizonSeconds: Double
+        let updatedAt: Date
+    }
+
     // Most recently accepted command (for the single-item received view).
     @Published var latestCommand: CommandEnvelope?
     // Rolling list of recent commands (newest first), including rejected attempts.
     @Published var recentCommands: [CommandRecord]
+    // Latest digital-twin status shown in the gateway dashboard.
+    @Published var twinStatus: TwinStatus?
 
     // Initializes the inbox with optional seed data (defaults to empty).
-    init(latestCommand: CommandEnvelope? = nil, recentCommands: [CommandRecord] = []) {
+    init(latestCommand: CommandEnvelope? = nil, recentCommands: [CommandRecord] = [], twinStatus: TwinStatus? = nil) {
         self.latestCommand = latestCommand
         self.recentCommands = recentCommands
+        self.twinStatus = twinStatus
     }
 
     // Attempt to decode raw JSON into a CommandEnvelope and add it to the beginning of the list.
@@ -65,10 +77,34 @@ final class GatewayInbox: ObservableObject {
         insertRecent(envelope: envelope, status: .rejected, message: message)
     }
 
+    // Updates the digital twin panel with current conditions and latest horizon forecast.
+    @MainActor func updateTwinStatus(currentState: DigitalTwinState, predictedStates: [DigitalTwinState], horizonSeconds: Double) {
+        let safeTemperatureRange = DigitalTwinModel.safeTemperatureRangeF
+        let safeHumidityRange = DigitalTwinModel.safeHumidityRangePercent
+
+        let currentSafe = safeTemperatureRange.contains(currentState.temperatureF)
+            && safeHumidityRange.contains(currentState.humidityPercent)
+
+        let forecastSafe = predictedStates.allSatisfy {
+            safeTemperatureRange.contains($0.temperatureF) && safeHumidityRange.contains($0.humidityPercent)
+        }
+
+        let forecastEndState = predictedStates.last ?? currentState
+        twinStatus = TwinStatus(
+            currentState: currentState,
+            currentStateSafe: currentSafe,
+            forecastEndState: forecastEndState,
+            forecastSafe: forecastSafe,
+            forecastHorizonSeconds: horizonSeconds,
+            updatedAt: Date()
+        )
+    }
+
     // Clears the latest and recent command history.
     @MainActor func clearHistory() {
         latestCommand = nil
         recentCommands.removeAll()
+        twinStatus = nil
     }
 
     private func insertRecent(envelope: CommandEnvelope, status: CommandStatus, message: String?) {
