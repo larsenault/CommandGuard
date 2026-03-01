@@ -130,7 +130,9 @@ final class GatewayListener: ObservableObject {
                     )
                 }
                 // Decode + validate schema/state before signature verification.
-                let envelope = try await self.commandValidator.decodeAndValidate(payload: payload, now: Date())
+                let validationOutcome = try await self.commandValidator.decodeAndValidate(payload: payload, now: Date())
+                let envelope = validationOutcome.envelope
+
                 // Verify signature before showing the command.
                 try await MainActor.run {
                     try self.verifier.verify(envelope: envelope)
@@ -138,6 +140,11 @@ final class GatewayListener: ObservableObject {
                 await MainActor.run {
                     // Only append after all validation and verification succeed.
                     self.inbox.appendAccepted(envelope: envelope)
+                    self.inbox.updateTwinStatus(
+                        currentState: validationOutcome.twinStateAfterAcceptance,
+                        predictedStates: validationOutcome.predictedStates,
+                        horizonSeconds: validationOutcome.predictionHorizonSeconds
+                    )
                 }
                 let successTimestamp = await MainActor.run { iso8601Now() }
                 let response = GatewayResponse(
