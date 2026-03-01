@@ -61,9 +61,9 @@ public enum DigitalTwinModel {
 
     // Applies one discrete-time model update using the current state and command input.
     public static func step(state: DigitalTwinState, command: CommandBody) -> DigitalTwinState {
-        let fanNormalized = normalizePercent(command.fanSpeedPercent)
-        let valveNormalized = normalizePercent(command.valvePositionPercent)
-        let powerDisturbance = command.equipmentPower ? 1.0 : 0.0
+        let fanNormalized = normalizePercent(command.fanSpeedPercent) // (F)
+        let valveNormalized = normalizePercent(command.valvePositionPercent) // (V)
+        let powerDisturbance = command.equipmentPower ? 1.0 : 0.0 // (P)
 
         let nextTemperature = state.temperatureF + dtSeconds * (
             qLoad * powerDisturbance
@@ -90,25 +90,38 @@ public enum DigitalTwinModel {
         command: CommandBody,
         seconds: Double
     ) -> [DigitalTwinState] {
+        // If the requested horizon is zero or negative, there is nothing to predict.
         guard seconds > 0 else {
             return []
         }
 
+        // Convert real time (seconds) into the number of full model updates to run.
+        // Round down so we only simulate complete dt-sized steps.
         let stepCount = Int((seconds / dtSeconds).rounded(.down))
+
+        // If the horizon is smaller than one dt step, return no forecast states.
         guard stepCount > 0 else {
             return []
         }
 
+        // This will hold the predicted future room states (T/H values).
         var states: [DigitalTwinState] = []
         states.reserveCapacity(stepCount)
 
+        // Start from the current known state and move forward one step at a time.
         var current = initialState
         for _ in 0..<stepCount {
+            // Apply one physics update using the same command each step.
             let next = step(state: current, command: command)
+
+            // Save the predicted state so callers can inspect the full trajectory.
             states.append(next)
+
+            // Make this state the new baseline for the next loop iteration.
             current = next
         }
 
+        // Return all predicted future states (not including the initial input state).
         return states
     }
 
