@@ -115,6 +115,12 @@ public enum CommandSchemaError: LocalizedError {
     case valvePositionOutOfRange(Double)
     case valvePositionUnsafe(Double)
     case fanSpeedTooLowForPower(Double)
+    case fanSpeedPolicyViolation(Double)
+    case valvePositionPolicyViolation(Double)
+    case fanMustBeZeroWhenPowerOff(Double)
+    case valveMustBeZeroWhenPowerOff(Double)
+    case predictedTemperatureOutOfBounds(value: Double, horizonSeconds: Double)
+    case predictedHumidityOutOfBounds(value: Double, horizonSeconds: Double)
     case invalidSignatureFields
 
     public var errorDescription: String? {
@@ -151,6 +157,18 @@ public enum CommandSchemaError: LocalizedError {
             return "Valve position unsafe: \(value)"
         case let .fanSpeedTooLowForPower(value):
             return "Fan speed too low for power ON: \(value)"
+        case let .fanSpeedPolicyViolation(value):
+            return "Fan speed violates policy: \(value)"
+        case let .valvePositionPolicyViolation(value):
+            return "Valve position violates policy: \(value)"
+        case let .fanMustBeZeroWhenPowerOff(value):
+            return "Fan speed must be 0 when power is OFF: \(value)"
+        case let .valveMustBeZeroWhenPowerOff(value):
+            return "Valve position must be 0 when power is OFF: \(value)"
+        case let .predictedTemperatureOutOfBounds(value, horizonSeconds):
+            return "Predicted temperature out of bounds within \(Int(horizonSeconds))s: \(value)"
+        case let .predictedHumidityOutOfBounds(value, horizonSeconds):
+            return "Predicted humidity out of bounds within \(Int(horizonSeconds))s: \(value)"
         case .invalidSignatureFields:
             return "Signature fields are invalid"
         }
