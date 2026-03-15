@@ -8,11 +8,13 @@ and verified by Luke Arsenault.
 */
 
 import Combine
+import CryptoKit
 import Foundation
 import Network
 
 // Listens for incoming NDJSON command envelopes over TCP and responds with NDJSON status.
 final class GatewayListener: ObservableObject {
+    // MARK: - State
     // High-level listener lifecycle state for UI or logging.
     enum State: Equatable {
         case idle
@@ -25,6 +27,7 @@ final class GatewayListener: ObservableObject {
     // Published state so SwiftUI can reflect listener status.
     @Published private(set) var state: State = .idle
 
+    // MARK: - Dependencies
     // Inbox that stores decoded commands for display in the gateway UI.
     private let inbox: GatewayInbox
     // Dedicated queue for Network framework callbacks.
@@ -35,7 +38,10 @@ final class GatewayListener: ObservableObject {
     private let commandValidator: GatewayCommandValidator
     // Active TCP listener instance (nil when stopped).
     private var listener: NWListener?
+    // Periodic task that advances the twin rollout every 5 seconds.
+    private var heartbeatTask: Task<Void, Never>?
 
+    // MARK: - Initialization
     // Initialize the listener with a shared inbox and signature verifier.
     init(inbox: GatewayInbox, verifier: GatewaySignatureVerifier = GatewaySignatureVerifier()) {
         self.inbox = inbox
@@ -43,10 +49,17 @@ final class GatewayListener: ObservableObject {
         self.commandValidator = GatewayCommandValidator()
     }
 
+    // MARK: - Public API
     // Starts listening and advertising a Bonjour service for discovery.
     func start() {
         guard listener == nil else { return }
         updateState(.starting)
+        startHeartbeatLoop()
+        Task { [weak self] in
+            guard let self else { return }
+            self.commandValidator.resetTwinState()
+            await self.initializeTwinStatus()
+        }
         do {
             let listener = try NWListener(using: .tcp)
             // Advertise the service using the same type the app browses for.
@@ -66,6 +79,8 @@ final class GatewayListener: ObservableObject {
 
     // Stops the listener and releases resources.
     func stop() {
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
         listener?.cancel()
         listener = nil
         updateState(.stopped)
@@ -74,13 +89,15 @@ final class GatewayListener: ObservableObject {
     // Resets validation state (request id, timestamps, nonces) for testing.
     func resetValidationState() {
         Task {
-            await commandValidator.resetState()
+            commandValidator.resetState()
             await MainActor.run {
                 inbox.clearHistory()
             }
+            await initializeTwinStatus()
         }
     }
 
+    // MARK: - Listener Event Handling
     // Translates Network framework state changes into our simplified state.
     private func handleListenerState(_ state: NWListener.State) {
         switch state {
@@ -135,20 +152,22 @@ final class GatewayListener: ObservableObject {
 
                 // Verify signature before showing the command.
                 try await MainActor.run {
-                    try self.verifier.verify(envelope: envelope)
+                    try self.verifySignature(for: envelope)
                 }
+                let acceptedTwinState = await self.commandValidator.acceptValidatedCommand(validationOutcome, now: Date())
                 await MainActor.run {
                     // Only append after all validation and verification succeed.
-                    self.inbox.appendAccepted(envelope: envelope)
+                    self.inbox.appendAccepted(command: self.makeReceivedCommand(from: envelope))
                     self.inbox.updateTwinStatus(
-                        currentState: validationOutcome.twinStateAfterAcceptance,
+                        currentState: acceptedTwinState,
                         predictedStates: validationOutcome.predictedStates,
                         horizonSeconds: validationOutcome.predictionHorizonSeconds
                     )
                 }
                 let successTimestamp = await MainActor.run { iso8601Now() }
+                let responseRequestId = await MainActor.run { envelope.requestId }
                 let response = GatewayResponse(
-                    id: envelope.requestId,
+                    id: responseRequestId,
                     deliveryStatus: .delivered,
                     executionStatus: .succeeded,
                     message: "Accepted",
@@ -158,24 +177,22 @@ final class GatewayListener: ObservableObject {
             } catch {
                 var rejectedRequestId: Int? = nil
                 if let payload {
-                    let envelope = await MainActor.run {
-                        try? JSONDecoder().decode(CommandEnvelope.self, from: payload)
-                    }
-                    if let envelope {
-                        rejectedRequestId = envelope.requestId
+                    if let command = await MainActor.run(body: { self.decodeReceivedCommand(from: payload) }) {
+                        rejectedRequestId = command.requestId
                         await MainActor.run {
-                            self.inbox.appendRejected(envelope: envelope, message: error.localizedDescription)
+                            self.inbox.appendRejected(command: command, message: error.localizedDescription)
                         }
-                        await self.commandValidator.recordRejectedRequestId(envelope.requestId)
+                        await self.commandValidator.recordRejectedRequestId(command.requestId)
                     }
                 }
+                Self.logSecurityFailureIfNeeded(error, requestId: rejectedRequestId)
                 // Report failure to the sender while keeping the gateway alive.
                 let failureTimestamp = await MainActor.run { iso8601Now() }
                 let response = GatewayResponse(
                     id: rejectedRequestId ?? -1,
                     deliveryStatus: .failed,
                     executionStatus: .failed,
-                    message: "Rejected: \(error.localizedDescription)",
+                    message: "Rejected: \(Self.userFacingRejectionMessage(for: error))",
                     timestamp: failureTimestamp
                 )
                 try? await self.sendResponse(response, over: connection)
@@ -184,6 +201,7 @@ final class GatewayListener: ObservableObject {
         }
     }
 
+    // MARK: - Transport
     // Reads from the TCP connection until a newline-delimited JSON payload is complete.
     private func receiveNDJSONLine(from connection: NWConnection) async throws -> Data {
         var buffer = Data()
@@ -238,6 +256,170 @@ final class GatewayListener: ObservableObject {
     private func updateState(_ newState: State) {
         Task { @MainActor in
             self.state = newState
+        }
+    }
+
+    // Starts (or restarts) the 5-second heartbeat that applies one predicted twin step at a time.
+    private func startHeartbeatLoop() {
+        heartbeatTask?.cancel()
+        heartbeatTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                guard !Task.isCancelled else { return }
+
+                if let progress = self.commandValidator.advanceHeartbeat() {
+                    await MainActor.run {
+                        self.inbox.updateTwinStatus(
+                            currentState: progress.currentState,
+                            predictedStates: progress.predictedStates,
+                            horizonSeconds: progress.horizonSeconds
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // Pulls the validator's current twin progress snapshot and publishes it to the dashboard.
+    private func initializeTwinStatus() async {
+        let progress = await commandValidator.currentTwinProgress()
+        await MainActor.run {
+            inbox.updateTwinStatus(
+                currentState: progress.currentState,
+                predictedStates: progress.predictedStates,
+                horizonSeconds: progress.horizonSeconds
+            )
+        }
+    }
+
+    // Delegates signature verification to the correct verifier path for typed envelopes.
+    private func verifySignature(for envelope: GatewayCommandValidator.ValidatedEnvelope) throws {
+        switch envelope {
+        case let .operational(operationalEnvelope):
+            try verifier.verifyTyped(envelope: operationalEnvelope)
+        case let .enemy(enemyEnvelope):
+            try verifier.verifyTyped(envelope: enemyEnvelope)
+        }
+    }
+
+    // Converts a validated envelope into the UI-friendly inbox model used across dashboard views.
+    private func makeReceivedCommand(from envelope: GatewayCommandValidator.ValidatedEnvelope) -> GatewayInbox.ReceivedCommand {
+        switch envelope {
+        case let .operational(operationalEnvelope):
+            return GatewayInbox.ReceivedCommand(
+                timestamp: operationalEnvelope.timestamp,
+                requestId: operationalEnvelope.requestId,
+                operatorId: operationalEnvelope.operatorId,
+                intent: .operational,
+                payload: .operational(operationalEnvelope.command)
+            )
+        case let .enemy(enemyEnvelope):
+            return GatewayInbox.ReceivedCommand(
+                timestamp: enemyEnvelope.timestamp,
+                requestId: enemyEnvelope.requestId,
+                operatorId: enemyEnvelope.operatorId,
+                intent: .enemyEmulation,
+                payload: .enemy(enemyEnvelope.command)
+            )
+        }
+    }
+
+    // Best-effort payload decode used on failures so rejected attempts can still appear in history.
+    private func decodeReceivedCommand(from payload: Data) -> GatewayInbox.ReceivedCommand? {
+        let decoder = JSONDecoder()
+
+        if let operational = try? decoder.decode(TypedCommandEnvelope<OperationalCommandBody>.self, from: payload) {
+            return GatewayInbox.ReceivedCommand(
+                timestamp: operational.timestamp,
+                requestId: operational.requestId,
+                operatorId: operational.operatorId,
+                intent: .operational,
+                payload: .operational(operational.command)
+            )
+        }
+
+        if let enemy = try? decoder.decode(TypedCommandEnvelope<EnemyCommandBody>.self, from: payload) {
+            return GatewayInbox.ReceivedCommand(
+                timestamp: enemy.timestamp,
+                requestId: enemy.requestId,
+                operatorId: enemy.operatorId,
+                intent: .enemyEmulation,
+                payload: .enemy(enemy.command)
+            )
+        }
+
+        return nil
+    }
+
+    // Maps internal verification/schema errors into concise messages suitable for sender-facing responses.
+    private nonisolated static func userFacingRejectionMessage(for error: Error) -> String {
+        if let verificationError = error as? GatewaySignatureVerifier.VerificationError {
+            switch verificationError {
+            case .missingSignature:
+                return "Missing signature."
+            case let .unsupportedAlgorithm(algorithm):
+                return "Unsupported alg \(algorithm)."
+            case let .unknownKeyId(keyId):
+                return "Unknown keyId \(keyId)."
+            case .invalidPublicKey:
+                return "Invalid signing key."
+            case .invalidSignature:
+                return "Signature check failed."
+            }
+        }
+
+        if let schemaError = error as? CommandSchemaError,
+           let description = schemaError.errorDescription {
+            return description
+        }
+
+        let rawMessage = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        if rawMessage.isEmpty {
+            return "Request validation failed."
+        }
+        return rawMessage
+    }
+
+    // Emits security-specific logs only for replay/signature/sequencing classes of rejection.
+    private nonisolated static func logSecurityFailureIfNeeded(_ error: Error, requestId: Int?) {
+        let requestLabel = requestId.map(String.init) ?? "unknown"
+
+        if let verificationError = error as? GatewaySignatureVerifier.VerificationError {
+            let reason: String
+            switch verificationError {
+            case .missingSignature:
+                reason = "missing signature"
+            case let .unsupportedAlgorithm(algorithm):
+                reason = "unsupported algorithm (\(algorithm))"
+            case let .unknownKeyId(keyId):
+                reason = "unknown keyId (\(keyId))"
+            case .invalidPublicKey:
+                reason = "invalid public key"
+            case .invalidSignature:
+                reason = "invalid signature value"
+            }
+            print("[Gateway Security] Rejected request \(requestLabel): signature verification failed (\(reason)).")
+            return
+        }
+
+        guard let schemaError = error as? CommandSchemaError else {
+            return
+        }
+
+        switch schemaError {
+        case .nonceReused:
+            print("[Gateway Security] Rejected request \(requestLabel): nonce replay detected.")
+        case .timestampNotMonotonic:
+            print("[Gateway Security] Rejected request \(requestLabel): timestamp replay/non-monotonic.")
+        case .timestampTooSoon:
+            print("[Gateway Security] Rejected request \(requestLabel): timestamp spacing violation.")
+        case .invalidRequestId:
+            print("[Gateway Security] Rejected request \(requestLabel): invalid request id.")
+        case let .requestIdOutOfSequence(expected):
+            print("[Gateway Security] Rejected request \(requestLabel): request id out of sequence (expected \(expected)).")
+        default:
+            break
         }
     }
 }
