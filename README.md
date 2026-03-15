@@ -80,6 +80,7 @@ Each command is canonicalized, signed (ECDSA P-256 / SHA-256), timestamped, nonc
 <a href="CommandGuardApp/images/macos-rejectedcommands.png">
   <img src="CommandGuardApp/images/macos-rejectedcommands.png" width="500">
 </a>
+
 ---
 
 ## 🖥️ macOS Verification Gateway
