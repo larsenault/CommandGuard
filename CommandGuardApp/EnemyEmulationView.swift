@@ -76,24 +76,22 @@ struct EnemyEmulationView: View {
                 }
 
                 Section("Actuator Injection") {
-                    // Fan-speed actuator command value to emulate unauthorized manipulation.
+                    // Fan-speed actuator command constrained to 0...100%.
                     HStack {
                         Text("Fan Speed (%)")
-                        Spacer()
-                        TextField("Fan", value: $viewModel.enemyFanSpeed, format: .number)
-                            .multilineTextAlignment(.trailing)
-                            .keyboardType(.decimalPad)
-                            .frame(width: 100)
+                        Slider(value: $viewModel.enemyFanSpeed, in: 0...100, step: 1)
+                        Text(String(format: "%.0f", viewModel.enemyFanSpeed))
+                            .frame(width: 44, alignment: .trailing)
+                            .font(.caption.monospacedDigit())
                     }
 
-                    // Valve-position actuator command value to emulate unauthorized manipulation.
+                    // Valve-position actuator command constrained to 0...100%.
                     HStack {
                         Text("Valve Position (%)")
-                        Spacer()
-                        TextField("Valve", value: $viewModel.enemyValvePosition, format: .number)
-                            .multilineTextAlignment(.trailing)
-                            .keyboardType(.decimalPad)
-                            .frame(width: 100)
+                        Slider(value: $viewModel.enemyValvePosition, in: 0...100, step: 1)
+                        Text(String(format: "%.0f", viewModel.enemyValvePosition))
+                            .frame(width: 44, alignment: .trailing)
+                            .font(.caption.monospacedDigit())
                     }
 
                     // Boolean actuator control for full equipment power state changes.
