@@ -12,17 +12,20 @@ import Foundation
 
 // Root view that shows three primary boxes: received commands, recent commands, and digital twin.
 struct ContentView: View {
+    // MARK: - Dependencies
     // Observable store that provides decoded commands for display.
     @ObservedObject private var inbox: GatewayInbox
     // Observable listener that manages the network state.
     @ObservedObject private var listener: GatewayListener
 
+    // MARK: - Initialization
     // Initializes the view with a provided inbox and listener.
     init(inbox: GatewayInbox, listener: GatewayListener) {
         _inbox = ObservedObject(wrappedValue: inbox)
         _listener = ObservedObject(wrappedValue: listener)
     }
 
+    // MARK: - View
     // Main UI layout for the macOS gateway dashboard.
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -61,6 +64,7 @@ struct ContentView: View {
         .padding(16)
     }
 
+    // MARK: - Derived UI State
     // Maps listener state into a concise status string for the UI.
     private var listenerStatusText: String {
         switch listener.state {
@@ -80,17 +84,20 @@ struct ContentView: View {
 
 // A titled container used for the three dashboard sections.
 private struct DashboardBox<Content: View>: View {
+    // MARK: - Inputs
     // Title displayed at the top of the box.
     let title: String
     // Box content provided by the caller.
     let content: Content
 
+    // MARK: - Initialization
     // Initializes the box with a title and a content builder.
     init(title: String, @ViewBuilder content: () -> Content) {
         self.title = title
         self.content = content()
     }
 
+    // MARK: - View
     // Layout for the dashboard box.
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -113,9 +120,12 @@ private struct DashboardBox<Content: View>: View {
 
 // Shows only the most recently received command.
 private struct ReceivedCommandView: View {
+    // MARK: - Inputs
     // Latest command to render (if available).
-    let command: CommandEnvelope?
+    let command: GatewayInbox.ReceivedCommand?
 
+    // MARK: - View
+    // Renders either the latest command row or an empty-state placeholder.
     var body: some View {
         Group {
             if let command {
@@ -130,9 +140,12 @@ private struct ReceivedCommandView: View {
 
 // Scrollable list of recent command rows (newest first).
 private struct RecentCommandsView: View {
+    // MARK: - Inputs
     // Commands to render in the list.
     let records: [GatewayInbox.CommandRecord]
 
+    // MARK: - View
+    // Displays a placeholder when empty, otherwise a vertical scroll list of command attempts.
     var body: some View {
         if records.isEmpty {
             PlaceholderBoxContent(text: "No recent command history yet.")
@@ -152,8 +165,12 @@ private struct RecentCommandsView: View {
 
 // Renders a command row with a status header for accepted/rejected attempts.
 private struct RecentCommandRow: View {
+    // MARK: - Inputs
+    // Historical command attempt and its acceptance/rejection metadata.
     let record: GatewayInbox.CommandRecord
 
+    // MARK: - View
+    // Shows attempt outcome first, then the normalized command details.
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
@@ -167,15 +184,19 @@ private struct RecentCommandRow: View {
                         .lineLimit(1)
                 }
             }
-            CommandRow(command: record.envelope)
+            CommandRow(command: record.command)
         }
     }
 }
 
 // Shows current twin state and latest prediction horizon summary.
 private struct DigitalTwinStatusView: View {
+    // MARK: - Inputs
+    // Most recent twin snapshot emitted by the gateway validation pipeline.
     let status: GatewayInbox.TwinStatus?
 
+    // MARK: - Formatting
+    // Formats the "Updated" timestamp in local time for operator readability.
     private static let timestampFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .none
@@ -183,6 +204,8 @@ private struct DigitalTwinStatusView: View {
         return formatter
     }()
 
+    // MARK: - View
+    // Presents live state, forecast safety, and end-of-horizon values.
     var body: some View {
         guard let status else {
             return AnyView(PlaceholderBoxContent(text: "No digital twin data yet."))
@@ -227,9 +250,11 @@ private struct DigitalTwinStatusView: View {
 
 // Placeholder text used for unfinished boxes.
 private struct PlaceholderBoxContent: View {
+    // MARK: - Inputs
     // Placeholder text to display.
     let text: String
 
+    // MARK: - View
     // Layout for placeholder content.
     var body: some View {
         Text(text)
@@ -243,9 +268,11 @@ private struct PlaceholderBoxContent: View {
 
 // Renders a single command row with metadata and parsed values.
 private struct CommandRow: View {
+    // MARK: - Inputs
     // The decoded command envelope to display.
-    let command: CommandEnvelope
+    let command: GatewayInbox.ReceivedCommand
 
+    // MARK: - View
     // Layout for a single row in the command list.
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -256,8 +283,11 @@ private struct CommandRow: View {
             Text(command.timestamp)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+            Text("Intent: \(command.intent == .enemyEmulation ? "Enemy Emulation" : "Operational")")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             // Render parsed command body values.
-            CommandValuesView(commandBody: command.command)
+            CommandValuesView(payload: command.payload)
         }
         .padding(.vertical, 4)
     }
@@ -265,21 +295,30 @@ private struct CommandRow: View {
 
 // Renders a compact list of parsed command values.
 private struct CommandValuesView: View {
-    // The control values contained within the command envelope.
-    let commandBody: CommandBody
+    // MARK: - Inputs
+    // The control values contained within the command.
+    let payload: GatewayInbox.CommandPayload
 
+    // MARK: - View
     // Layout for the command value summary.
     var body: some View {
-        let powerText = commandBody.equipmentPower ? "On" : "Off"
-        let controlText = commandBody.controlEnabled ? "Enabled" : "Disabled"
-
         VStack(alignment: .leading, spacing: 2) {
-            Text(String(format: "Temp: %.1f°F", commandBody.temperatureSetpointF))
-            Text(String(format: "Humidity: %.0f%%", commandBody.humiditySetpointPercent))
-            Text(String(format: "Fan: %.0f%%", commandBody.fanSpeedPercent))
-            Text(String(format: "Valve: %.0f%%", commandBody.valvePositionPercent))
-            Text("Power: \(powerText)")
-            Text("Control: \(controlText)")
+            switch payload {
+            case let .operational(commandBody):
+                let powerText = commandBody.equipmentPower ? "On" : "Off"
+                let emulationText = commandBody.enemyEmulation ? "On" : "Off"
+                Text(String(format: "Fan: %.0f%%", commandBody.fanSpeedPercent))
+                Text(String(format: "Valve: %.0f%%", commandBody.valvePositionPercent))
+                Text("Power: \(powerText)")
+                Text("Enemy Emulation: \(emulationText)")
+            case let .enemy(commandBody):
+                let powerText = commandBody.equipmentPower ? "On" : "Off"
+                Text(String(format: "Temp: %.1f°F", commandBody.temperatureSetpointF))
+                Text(String(format: "Humidity: %.0f%%", commandBody.humiditySetpointPercent))
+                Text(String(format: "Fan: %.1f%%", commandBody.fanSpeedPercent))
+                Text(String(format: "Valve: %.1f%%", commandBody.valvePositionPercent))
+                Text("Power: \(powerText)")
+            }
         }
         .font(.caption)
     }
