@@ -17,9 +17,24 @@ final class GatewayInbox: ObservableObject {
         case rejected
     }
 
+    enum CommandPayload {
+        case operational(OperationalCommandBody)
+        case enemy(EnemyCommandBody)
+        case legacy(CommandBody)
+    }
+
+    struct ReceivedCommand: Identifiable {
+        let id = UUID()
+        let timestamp: String
+        let requestId: Int
+        let operatorId: String
+        let intent: CommandIntent
+        let payload: CommandPayload
+    }
+
     struct CommandRecord: Identifiable {
         let id = UUID()
-        let envelope: CommandEnvelope
+        let command: ReceivedCommand
         let status: CommandStatus
         let message: String?
         let receivedAt: Date
@@ -35,46 +50,84 @@ final class GatewayInbox: ObservableObject {
     }
 
     // Most recently accepted command (for the single-item received view).
-    @Published var latestCommand: CommandEnvelope?
+    @Published var latestCommand: ReceivedCommand?
     // Rolling list of recent commands (newest first), including rejected attempts.
     @Published var recentCommands: [CommandRecord]
     // Latest digital-twin status shown in the gateway dashboard.
     @Published var twinStatus: TwinStatus?
 
     // Initializes the inbox with optional seed data (defaults to empty).
-    init(latestCommand: CommandEnvelope? = nil, recentCommands: [CommandRecord] = [], twinStatus: TwinStatus? = nil) {
+    init(latestCommand: ReceivedCommand? = nil, recentCommands: [CommandRecord] = [], twinStatus: TwinStatus? = nil) {
         self.latestCommand = latestCommand
         self.recentCommands = recentCommands
         self.twinStatus = twinStatus
     }
 
-    // Attempt to decode raw JSON into a CommandEnvelope and add it to the beginning of the list.
+    // Attempt to decode raw JSON into known envelope formats and add it to history.
     @MainActor func append(rawJSON: String) {
-        // Convert the incoming JSON string into UTF-8 data.
         guard let data = rawJSON.data(using: .utf8) else {
             return
         }
 
-        // Decode the JSON into the shared command envelope model.
         let decoder = JSONDecoder()
         do {
-            let command = try decoder.decode(CommandEnvelope.self, from: data)
-            appendAccepted(envelope: command)
+            let operational = try decoder.decode(TypedCommandEnvelope<OperationalCommandBody>.self, from: data)
+            appendAccepted(
+                command: ReceivedCommand(
+                    timestamp: operational.timestamp,
+                    requestId: operational.requestId,
+                    operatorId: operational.operatorId,
+                    intent: .operational,
+                    payload: .operational(operational.command)
+                )
+            )
+            return
+        } catch {
+            // Continue probing other formats.
+        }
+
+        do {
+            let enemy = try decoder.decode(TypedCommandEnvelope<EnemyCommandBody>.self, from: data)
+            appendAccepted(
+                command: ReceivedCommand(
+                    timestamp: enemy.timestamp,
+                    requestId: enemy.requestId,
+                    operatorId: enemy.operatorId,
+                    intent: .enemyEmulation,
+                    payload: .enemy(enemy.command)
+                )
+            )
+            return
+        } catch {
+            // Continue probing legacy format.
+        }
+
+        do {
+            let legacy = try decoder.decode(CommandEnvelope.self, from: data)
+            appendAccepted(
+                command: ReceivedCommand(
+                    timestamp: legacy.timestamp,
+                    requestId: legacy.requestId,
+                    operatorId: legacy.operatorId,
+                    intent: .operational,
+                    payload: .legacy(legacy.command)
+                )
+            )
         } catch {
             // Ignore invalid payloads for now; we will surface errors later.
             return
         }
     }
 
-    // Adds a pre-validated command envelope to the latest slot and recent list.
-    @MainActor func appendAccepted(envelope: CommandEnvelope) {
-        latestCommand = envelope
-        insertRecent(envelope: envelope, status: .accepted, message: nil)
+    // Adds a pre-validated command to the latest slot and recent list.
+    @MainActor func appendAccepted(command: ReceivedCommand) {
+        latestCommand = command
+        insertRecent(command: command, status: .accepted, message: nil)
     }
 
-    // Adds a rejected command envelope to the recent list only.
-    @MainActor func appendRejected(envelope: CommandEnvelope, message: String?) {
-        insertRecent(envelope: envelope, status: .rejected, message: message)
+    // Adds a rejected command to the recent list only.
+    @MainActor func appendRejected(command: ReceivedCommand, message: String?) {
+        insertRecent(command: command, status: .rejected, message: message)
     }
 
     // Updates the digital twin panel with current conditions and latest horizon forecast.
@@ -107,9 +160,9 @@ final class GatewayInbox: ObservableObject {
         twinStatus = nil
     }
 
-    private func insertRecent(envelope: CommandEnvelope, status: CommandStatus, message: String?) {
+    private func insertRecent(command: ReceivedCommand, status: CommandStatus, message: String?) {
         let record = CommandRecord(
-            envelope: envelope,
+            command: command,
             status: status,
             message: message,
             receivedAt: Date()
@@ -122,27 +175,22 @@ final class GatewayInbox: ObservableObject {
 
     // Provides sample data for previews or early UI testing.
     static func sample() -> GatewayInbox {
-        // Two mocked command envelopes for quick visual validation.
-        let samples: [CommandEnvelope] = [
-            CommandEnvelope(
-                timestamp: "2026-02-13T15:10:12.345Z",
-                requestId: 1001,
-                operatorId: "operator-a",
-                nonce: "nonce-001",
-                command: CommandBody(
-                    temperatureSetpointF: 72.0,
-                    humiditySetpointPercent: 45.0,
+        let sampleCommand = ReceivedCommand(
+            timestamp: "2026-02-13T15:10:12.345Z",
+            requestId: 1001,
+            operatorId: "operator-a",
+            intent: .operational,
+            payload: .operational(
+                OperationalCommandBody(
                     fanSpeedPercent: 60.0,
                     valvePositionPercent: 40.0,
                     equipmentPower: true,
-                    controlEnabled: true
+                    enemyEmulation: false
                 )
             )
-        ]
+        )
 
-        let records = samples.map {
-            CommandRecord(envelope: $0, status: .accepted, message: nil, receivedAt: Date())
-        }
-        return GatewayInbox(latestCommand: samples.first, recentCommands: records)
+        let record = CommandRecord(command: sampleCommand, status: .accepted, message: nil, receivedAt: Date())
+        return GatewayInbox(latestCommand: sampleCommand, recentCommands: [record])
     }
 }

@@ -54,7 +54,6 @@ struct CommandSendResult {
         // Sends a signed command envelope over TCP and waits for an NDJSON response.
         func send(
             signedEnvelopeData: Data,
-            command: CommandBody,
             gateway: GatewayService
         ) async -> Result<CommandSendResult, CommandSendError> {
             // Always send to the gateway; validation happens server-side.

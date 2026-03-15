@@ -16,11 +16,88 @@ actor GatewayCommandValidator {
         let expiresAt: Date
     }
 
+    private struct EnvelopeMetadata {
+        let requestId: Int
+        let operatorId: String
+        let nonce: String
+    }
+
+    private enum CommandForSafety {
+        case operational(OperationalCommandBody)
+        case enemy(EnemyCommandBody)
+        case legacy(CommandBody)
+    }
+
+    enum ValidatedEnvelope {
+        case operational(TypedCommandEnvelope<OperationalCommandBody>)
+        case enemy(TypedCommandEnvelope<EnemyCommandBody>)
+        case legacy(CommandEnvelope)
+
+        var requestId: Int {
+            switch self {
+            case let .operational(envelope):
+                return envelope.requestId
+            case let .enemy(envelope):
+                return envelope.requestId
+            case let .legacy(envelope):
+                return envelope.requestId
+            }
+        }
+
+        var timestamp: String {
+            switch self {
+            case let .operational(envelope):
+                return envelope.timestamp
+            case let .enemy(envelope):
+                return envelope.timestamp
+            case let .legacy(envelope):
+                return envelope.timestamp
+            }
+        }
+
+        var operatorId: String {
+            switch self {
+            case let .operational(envelope):
+                return envelope.operatorId
+            case let .enemy(envelope):
+                return envelope.operatorId
+            case let .legacy(envelope):
+                return envelope.operatorId
+            }
+        }
+
+        var intent: CommandIntent {
+            switch self {
+            case .operational:
+                return .operational
+            case .enemy:
+                return .enemyEmulation
+            case .legacy:
+                return .operational
+            }
+        }
+    }
+
     struct ValidationOutcome {
-        let envelope: CommandEnvelope
+        let envelope: ValidatedEnvelope
         let twinStateAfterAcceptance: DigitalTwinState
         let predictedStates: [DigitalTwinState]
         let predictionHorizonSeconds: Double
+    }
+
+    struct TwinProgress {
+        let currentState: DigitalTwinState
+        let predictedStates: [DigitalTwinState]
+        let horizonSeconds: Double
+    }
+
+    private struct ActiveTwinRollout {
+        let trajectory: [DigitalTwinState]
+        var nextStepIndex: Int
+    }
+
+    private struct IntentProbe: Decodable {
+        let intent: CommandIntent?
     }
 
     private let allowedOperatorId: String
@@ -29,9 +106,10 @@ actor GatewayCommandValidator {
     private let nonceTTL: TimeInterval
     private let nonceCapacity: Int
     private let safetyPredictionHorizonSeconds: Double = 300
-    private let stateAdvanceSecondsPerAcceptedCommand: Double = 60
+    private let heartbeatSeconds: Double = 5
     private let zeroTolerance: Double = 0.0001
     private var nonces: [NonceEntry] = []
+    private var activeTwinRollout: ActiveTwinRollout?
 
     // Persisted state keys
     private let lastRequestIdKey = "CommandGuard.Gateway.LastRequestId"
@@ -56,31 +134,34 @@ actor GatewayCommandValidator {
 
     // Runs schema validation plus gateway state checks, then updates persisted state.
     func decodeAndValidate(payload: Data, now: Date = Date()) async throws -> ValidationOutcome {
-        let (envelope, timestamp) = try await MainActor.run {
-            try CommandSchemaValidator.decodeAndValidateBasics(from: payload)
+        let decodeResult = try await MainActor.run {
+            try decodeEnvelope(from: payload)
         }
         defer {
-            saveLastSeenTimestamp(timestamp)
+            saveLastSeenTimestamp(decodeResult.timestamp)
         }
 
         // Load the latest simulated room conditions so it predicts from "now", not from scratch each time.
         let currentTwinState = await loadTwinState()
         let predictedStates = try await validateStateful(
-            envelope: envelope,
-            timestamp: timestamp,
+            metadata: decodeResult.metadata,
+            timestamp: decodeResult.timestamp,
             now: now,
+            command: decodeResult.command,
             currentTwinState: currentTwinState
         )
+
         let twinStateAfterAcceptance = await recordAcceptance(
-            requestId: envelope.requestId,
-            timestamp: timestamp,
-            nonce: envelope.nonce,
-            command: envelope.command,
+            requestId: decodeResult.metadata.requestId,
+            timestamp: decodeResult.timestamp,
+            nonce: decodeResult.metadata.nonce,
             currentTwinState: currentTwinState,
+            predictedStates: predictedStates,
             now: now
         )
+
         return ValidationOutcome(
-            envelope: envelope,
+            envelope: decodeResult.envelope,
             twinStateAfterAcceptance: twinStateAfterAcceptance,
             predictedStates: predictedStates,
             predictionHorizonSeconds: safetyPredictionHorizonSeconds
@@ -95,6 +176,7 @@ actor GatewayCommandValidator {
         userDefaults.removeObject(forKey: twinTemperatureKey)
         userDefaults.removeObject(forKey: twinHumidityKey)
         nonces.removeAll()
+        activeTwinRollout = nil
     }
 
     // Records a rejected request id so sequencing keeps advancing even on failure.
@@ -102,15 +184,91 @@ actor GatewayCommandValidator {
         saveLastRequestId(requestId)
     }
 
+    // Advances twin state by one 5-second step from the precomputed accepted-command trajectory.
+    func advanceHeartbeat() -> TwinProgress? {
+        guard var rollout = activeTwinRollout else {
+            return nil
+        }
+        guard rollout.nextStepIndex < rollout.trajectory.count else {
+            activeTwinRollout = nil
+            return nil
+        }
+
+        let nextState = rollout.trajectory[rollout.nextStepIndex]
+        rollout.nextStepIndex += 1
+
+        let remainingStates: [DigitalTwinState]
+        if rollout.nextStepIndex < rollout.trajectory.count {
+            remainingStates = Array(rollout.trajectory[rollout.nextStepIndex...])
+            activeTwinRollout = rollout
+        } else {
+            remainingStates = []
+            activeTwinRollout = nil
+        }
+
+        saveTwinState(nextState)
+        return TwinProgress(
+            currentState: nextState,
+            predictedStates: remainingStates,
+            horizonSeconds: Double(remainingStates.count) * heartbeatSeconds
+        )
+    }
+
+    // Decodes a payload into typed/legacy envelope plus common metadata used by stateful checks.
+    private func decodeEnvelope(from payload: Data) throws -> (
+        envelope: ValidatedEnvelope,
+        metadata: EnvelopeMetadata,
+        command: CommandForSafety,
+        timestamp: Date
+    ) {
+        let probe: IntentProbe
+        do {
+            probe = try JSONDecoder().decode(IntentProbe.self, from: payload)
+        } catch {
+            throw CommandSchemaError.invalidJSON(reason: error.localizedDescription)
+        }
+
+        if let intent = probe.intent {
+            switch intent {
+            case .operational:
+                let (envelope, timestamp) = try CommandSchemaValidator.decodeAndValidateOperationalBasics(from: payload)
+                return (
+                    envelope: .operational(envelope),
+                    metadata: EnvelopeMetadata(requestId: envelope.requestId, operatorId: envelope.operatorId, nonce: envelope.nonce),
+                    command: .operational(envelope.command),
+                    timestamp: timestamp
+                )
+            case .enemyEmulation:
+                let (envelope, timestamp) = try CommandSchemaValidator.decodeAndValidateEnemyBasics(from: payload)
+                return (
+                    envelope: .enemy(envelope),
+                    metadata: EnvelopeMetadata(requestId: envelope.requestId, operatorId: envelope.operatorId, nonce: envelope.nonce),
+                    command: .enemy(envelope.command),
+                    timestamp: timestamp
+                )
+            }
+        }
+
+        // Backward compatibility for legacy envelopes that do not carry `intent`.
+        let (envelope, timestamp) = try CommandSchemaValidator.decodeAndValidateBasics(from: payload)
+        return (
+            envelope: .legacy(envelope),
+            metadata: EnvelopeMetadata(requestId: envelope.requestId, operatorId: envelope.operatorId, nonce: envelope.nonce),
+            command: .legacy(envelope.command),
+            timestamp: timestamp
+        )
+    }
+
     // Enforces allowed operator, monotonic timestamps, request sequencing, and nonce reuse.
     private func validateStateful(
-        envelope: CommandEnvelope,
+        metadata: EnvelopeMetadata,
         timestamp: Date,
         now: Date,
+        command: CommandForSafety,
         currentTwinState: DigitalTwinState
     ) async throws -> [DigitalTwinState] {
         // Reject commands from unexpected operators.
-        guard envelope.operatorId == allowedOperatorId else {
+        guard metadata.operatorId == allowedOperatorId else {
             throw CommandSchemaError.operatorIdNotAllowed(expected: allowedOperatorId)
         }
 
@@ -126,18 +284,18 @@ actor GatewayCommandValidator {
 
         // Require a strictly sequential requestId, starting at 1000 on fresh installs.
         let expectedRequestId = (loadLastRequestId() ?? 999) + 1
-        if envelope.requestId != expectedRequestId {
+        if metadata.requestId != expectedRequestId {
             throw CommandSchemaError.requestIdOutOfSequence(expected: expectedRequestId)
         }
 
         // Reject nonces already seen within the TTL window.
         purgeExpiredNonces(now: now)
-        if nonces.contains(where: { $0.value == envelope.nonce }) {
+        if nonces.contains(where: { $0.value == metadata.nonce }) {
             throw CommandSchemaError.nonceReused
         }
 
         // Apply physical-system policy checks and short-horizon safety prediction.
-        return try await validatePhysicalSafety(command: envelope.command, currentTwinState: currentTwinState)
+        return try await validatePhysicalSafety(command: command, currentTwinState: currentTwinState)
     }
 
     // Records success only after schema and signature validation succeed.
@@ -145,26 +303,18 @@ actor GatewayCommandValidator {
         requestId: Int,
         timestamp: Date,
         nonce: String,
-        command: CommandBody,
         currentTwinState: DigitalTwinState,
+        predictedStates: [DigitalTwinState],
         now: Date
     ) async -> DigitalTwinState {
         saveLastRequestId(requestId)
         saveLastTimestamp(timestamp)
         insertNonce(nonce, now: now)
 
-        // Advance the twin by a larger demo window so each accepted command causes visible movement.
-        // The model APIs are main-actor isolated, so go to MainActor for the math call.
-        let nextTwinState = await MainActor.run {
-            let projected = DigitalTwinModel.simulate(
-                state: currentTwinState,
-                command: command,
-                seconds: stateAdvanceSecondsPerAcceptedCommand
-            )
-            return projected.last ?? currentTwinState
-        }
-        saveTwinState(nextTwinState)
-        return nextTwinState
+        // Anchor a fixed 300-second trajectory at acceptance time, then advance along it every heartbeat.
+        activeTwinRollout = ActiveTwinRollout(trajectory: predictedStates, nextStepIndex: 0)
+        saveTwinState(currentTwinState)
+        return currentTwinState
     }
 
     // FIFO cache with TTL to prevent nonce replay while bounding memory.
@@ -187,13 +337,13 @@ actor GatewayCommandValidator {
     }
 
     // Runs command policy rules and forward prediction against safe operating bounds.
-    private func validatePhysicalSafety(command: CommandBody, currentTwinState: DigitalTwinState) async throws -> [DigitalTwinState] {
+    private func validatePhysicalSafety(command: CommandForSafety, currentTwinState: DigitalTwinState) async throws -> [DigitalTwinState] {
         try await validatePolicyRules(command: command)
         return try await validatePredictionBounds(command: command, currentTwinState: currentTwinState)
     }
 
     // Enforces fan/valve constraints for power ON and OFF modes.
-    private func validatePolicyRules(command: CommandBody) async throws {
+    private func validatePolicyRules(command: CommandForSafety) async throws {
         // Grab all policy constants in one place so the checks below read clearly.
         // Tuple mapping: .0 = fan ON range, .1 = valve ON range, .2 = fan OFF required value, .3 = valve OFF required value.
         let policy = await MainActor.run {
@@ -205,38 +355,57 @@ actor GatewayCommandValidator {
             )
         }
 
-        if command.equipmentPower {
-            if !policy.0.contains(command.fanSpeedPercent) {
-                throw CommandSchemaError.fanSpeedPolicyViolation(command.fanSpeedPercent)
+        let actuator = extractActuatorValues(from: command)
+
+        if actuator.power {
+            if !policy.0.contains(actuator.fan) {
+                throw CommandSchemaError.fanSpeedPolicyViolation(actuator.fan)
             }
-            if !policy.1.contains(command.valvePositionPercent) {
-                throw CommandSchemaError.valvePositionPolicyViolation(command.valvePositionPercent)
+            if !policy.1.contains(actuator.valve) {
+                throw CommandSchemaError.valvePositionPolicyViolation(actuator.valve)
             }
             return
         }
 
-        let fanDelta = abs(command.fanSpeedPercent - policy.2)
+        let fanDelta = abs(actuator.fan - policy.2)
         if fanDelta > zeroTolerance {
-            throw CommandSchemaError.fanMustBeZeroWhenPowerOff(command.fanSpeedPercent)
+            throw CommandSchemaError.fanMustBeZeroWhenPowerOff(actuator.fan)
         }
 
-        let valveDelta = abs(command.valvePositionPercent - policy.3)
+        let valveDelta = abs(actuator.valve - policy.3)
         if valveDelta > zeroTolerance {
-            throw CommandSchemaError.valveMustBeZeroWhenPowerOff(command.valvePositionPercent)
+            throw CommandSchemaError.valveMustBeZeroWhenPowerOff(actuator.valve)
         }
     }
 
-    // Simulates command effect over the 60 sec fixed horizon and rejects predicted unsafe trajectories.
-    private func validatePredictionBounds(command: CommandBody, currentTwinState: DigitalTwinState) async throws -> [DigitalTwinState] {
+    // Simulates command effect over the fixed 300-second horizon and rejects predicted unsafe trajectories.
+    private func validatePredictionBounds(command: CommandForSafety, currentTwinState: DigitalTwinState) async throws -> [DigitalTwinState] {
         // Run a short "what happens next" forecast.
         // Tuple mapping: .0 = predicted future states, .1 = safe temp range, .2 = safe humidity range.
         let prediction = await MainActor.run {
-            (
-                DigitalTwinModel.simulate(
+            let predictedStates: [DigitalTwinState]
+            switch command {
+            case let .operational(operationalCommand):
+                predictedStates = DigitalTwinModel.simulate(
                     state: currentTwinState,
-                    command: command,
+                    command: operationalCommand,
                     seconds: safetyPredictionHorizonSeconds
-                ),
+                )
+            case let .enemy(enemyCommand):
+                predictedStates = DigitalTwinModel.simulate(
+                    state: currentTwinState,
+                    command: enemyCommand,
+                    seconds: safetyPredictionHorizonSeconds
+                )
+            case let .legacy(legacyCommand):
+                predictedStates = DigitalTwinModel.simulate(
+                    state: currentTwinState,
+                    command: legacyCommand,
+                    seconds: safetyPredictionHorizonSeconds
+                )
+            }
+            return (
+                predictedStates,
                 DigitalTwinModel.safeTemperatureRangeF,
                 DigitalTwinModel.safeHumidityRangePercent
             )
@@ -258,6 +427,17 @@ actor GatewayCommandValidator {
         }
 
         return prediction.0
+    }
+
+    private func extractActuatorValues(from command: CommandForSafety) -> (fan: Double, valve: Double, power: Bool) {
+        switch command {
+        case let .operational(operationalCommand):
+            return (operationalCommand.fanSpeedPercent, operationalCommand.valvePositionPercent, operationalCommand.equipmentPower)
+        case let .enemy(enemyCommand):
+            return (enemyCommand.fanSpeedPercent, enemyCommand.valvePositionPercent, enemyCommand.equipmentPower)
+        case let .legacy(legacyCommand):
+            return (legacyCommand.fanSpeedPercent, legacyCommand.valvePositionPercent, legacyCommand.equipmentPower)
+        }
     }
 
     // Reads persisted twin state, defaulting to design initial conditions when absent.
@@ -292,13 +472,6 @@ actor GatewayCommandValidator {
 
     private func saveLastRequestId(_ value: Int) {
         userDefaults.set(value, forKey: lastRequestIdKey)
-    }
-
-    private func loadLastTimestamp() -> Date? {
-        guard let value = userDefaults.object(forKey: lastTimestampKey) as? Double else {
-            return nil
-        }
-        return Date(timeIntervalSince1970: value)
     }
 
     private func saveLastTimestamp(_ date: Date) {
