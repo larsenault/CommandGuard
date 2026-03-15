@@ -20,7 +20,6 @@ final class GatewayInbox: ObservableObject {
     enum CommandPayload {
         case operational(OperationalCommandBody)
         case enemy(EnemyCommandBody)
-        case legacy(CommandBody)
     }
 
     struct ReceivedCommand: Identifiable {
@@ -102,21 +101,8 @@ final class GatewayInbox: ObservableObject {
             // Continue probing legacy format.
         }
 
-        do {
-            let legacy = try decoder.decode(CommandEnvelope.self, from: data)
-            appendAccepted(
-                command: ReceivedCommand(
-                    timestamp: legacy.timestamp,
-                    requestId: legacy.requestId,
-                    operatorId: legacy.operatorId,
-                    intent: .operational,
-                    payload: .legacy(legacy.command)
-                )
-            )
-        } catch {
-            // Ignore invalid payloads for now; we will surface errors later.
-            return
-        }
+        // Ignore invalid payloads for now; we will surface errors later.
+        return
     }
 
     // Adds a pre-validated command to the latest slot and recent list.
