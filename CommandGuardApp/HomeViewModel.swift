@@ -11,15 +11,27 @@ import SwiftUI
 import Combine
 import Foundation
 
+enum EnemyAttackMode: String, CaseIterable, Identifiable {
+    case normal = "Normal"
+    case replayNonce = "Replay Nonce"
+    case invalidSignature = "Invalid Signature"
+
+    var id: String { rawValue }
+}
+
 @MainActor
 final class HomeViewModel: ObservableObject {
     // UI inputs for building a command.
-    @Published var temperatureSetpoint: Double = 22
-    @Published var humiditySetpoint: Double = 40
     @Published var fanSpeed: Double = 50
     @Published var valvePosition: Double = 50
     @Published var equipmentPower: Bool = false
-    @Published var controlEnabled: Bool = true
+    @Published var enemyEmulation: Bool = false
+    @Published var enemyTemperatureSetpoint: Double = 95
+    @Published var enemyHumiditySetpoint: Double = 10
+    @Published var enemyFanSpeed: Double = 120
+    @Published var enemyValvePosition: Double = -10
+    @Published var enemyEquipmentPower: Bool = true
+    @Published var enemyAttackMode: EnemyAttackMode = .normal
 
     // UI state for send progress and result display.
     @Published var sendState: SendState = .idle
@@ -33,6 +45,7 @@ final class HomeViewModel: ObservableObject {
     // Service that will transmit the signed envelope.
     private let sendService = CommandSendResult.CommandSendService()
     private let browser = BonjourBrowser()
+    private var lastAcceptedEnemyNonce: String?
 
     // Derived UI labels and flags.
     var statusTitle: String? { sendState.statusText }
@@ -92,22 +105,21 @@ final class HomeViewModel: ObservableObject {
         lastResultTimestamp = nil
 
         // Create the command body from UI inputs.
-        let body = CommandBody(
-            temperatureSetpointF: temperatureSetpoint,
-            humiditySetpointPercent: humiditySetpoint,
+        let body = OperationalCommandBody(
             fanSpeedPercent: fanSpeed,
             valvePositionPercent: valvePosition,
             equipmentPower: equipmentPower,
-            controlEnabled: controlEnabled
+            enemyEmulation: enemyEmulation
         )
 
         // Construct the envelope that will be signed and transmitted.
         var updatedRequestId = requestId
-        var envelope = CommandEnvelope(
+        var envelope = TypedCommandEnvelope(
             timestamp: iso8601Now(),
             requestId: requestId,
             operatorId: operatorId,
             nonce: makeNonceBase64(),
+            intent: .operational,
             command: body,
             signature: nil
         )
@@ -133,7 +145,6 @@ final class HomeViewModel: ObservableObject {
             // Send the signed NDJSON payload to the selected gateway.
             let result = await sendService.send(
                 signedEnvelopeData: data,
-                command: body,
                 gateway: gateway
             )
             switch result {
@@ -200,6 +211,147 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
+    // Builds, signs, encodes, and sends an enemy-emulation command payload.
+    func sendEnemyCommand(requestId: Int, operatorId: String) async -> Int? {
+        guard !isSending else {
+            return nil
+        }
+
+        guard let gateway = selectedGateway else {
+            sendState = .failure(message: "No Gateway Selected")
+            statusMessage = "Select a gateway before sending a command."
+            lastResultTimestamp = Date()
+            return nil
+        }
+
+        sendState = .sending
+        statusMessage = nil
+        lastResultTimestamp = nil
+
+        let nonce: String
+        switch enemyAttackMode {
+        case .normal, .invalidSignature:
+            nonce = makeNonceBase64()
+        case .replayNonce:
+            guard let replayNonce = lastAcceptedEnemyNonce else {
+                sendState = .failure(message: "Missing Replay Nonce")
+                statusMessage = "Send one accepted enemy command first, then replay its nonce."
+                lastResultTimestamp = Date()
+                return nil
+            }
+            nonce = replayNonce
+        }
+
+        let body = EnemyCommandBody(
+            temperatureSetpointF: enemyTemperatureSetpoint,
+            humiditySetpointPercent: enemyHumiditySetpoint,
+            fanSpeedPercent: enemyFanSpeed,
+            valvePositionPercent: enemyValvePosition,
+            equipmentPower: enemyEquipmentPower
+        )
+
+        var updatedRequestId = requestId
+        var envelope = TypedCommandEnvelope(
+            timestamp: iso8601Now(),
+            requestId: requestId,
+            operatorId: operatorId,
+            nonce: nonce,
+            intent: .enemyEmulation,
+            command: body,
+            signature: nil
+        )
+
+        do {
+            let canonical = try encodeCanonicalEnvelope(envelope)
+            let signer = CryptoSigner()
+            let (sigBase64, keyId) = try signer.sign(data: canonical)
+            var signatureValue = sigBase64
+            if enemyAttackMode == .invalidSignature {
+                signatureValue = tamperSignatureBase64(sigBase64)
+            }
+            envelope.signature = Signature(alg: "ECDSA_P256_SHA256", value: signatureValue, keyId: keyId)
+
+            let transportEncoder = JSONEncoder()
+            transportEncoder.outputFormatting = [.sortedKeys]
+            let data = try transportEncoder.encode(envelope)
+            let result = await sendService.send(
+                signedEnvelopeData: data,
+                gateway: gateway
+            )
+
+            switch result {
+            case let .success(response):
+                let deliveryFailed = response.deliveryStatus == .failed
+                let executionFailed = response.executionStatus == .failed
+                let isSuccess = deliveryFailed == false && executionFailed == false
+                let statusPrefix: String
+                if deliveryFailed {
+                    statusPrefix = "Delivery failed"
+                } else if executionFailed {
+                    statusPrefix = "Command failed"
+                } else {
+                    statusPrefix = "Command succeeded"
+                }
+
+                sendState = isSuccess ? .success : .failure(message: "Failed")
+                statusMessage = response.message == nil ? statusPrefix : "\(statusPrefix): \(response.message ?? "")"
+
+                let displayTimestamp = response.gatewayTimestamp ?? response.receivedAt
+                lastResultTimestamp = displayTimestamp
+                if isSuccess {
+                    lastAcceptedEnemyNonce = envelope.nonce
+                }
+                appendRecentEvent(
+                    title: isSuccess ? "Enemy Success" : "Enemy Failed",
+                    details: response.message == nil ? statusPrefix : "\(statusPrefix): \(response.message ?? "")",
+                    timestamp: displayTimestamp,
+                    isSuccess: isSuccess,
+                    command: body
+                )
+
+                if response.requestId > 0 {
+                    updatedRequestId = response.requestId + 1
+                }
+            case let .failure(error):
+                sendState = .failure(message: error.userTitle)
+                statusMessage = error.userMessage
+                lastResultTimestamp = Date()
+                appendRecentEvent(
+                    title: "Enemy \(error.userTitle)",
+                    details: error.userMessage,
+                    timestamp: Date(),
+                    isSuccess: false,
+                    command: body
+                )
+            }
+
+            return updatedRequestId
+        } catch {
+            sendState = .failure(message: "Error")
+            statusMessage = "Failed to sign or encode enemy command"
+            lastResultTimestamp = Date()
+            appendRecentEvent(
+                title: "Enemy Error",
+                details: "Failed to sign or encode enemy command",
+                timestamp: Date(),
+                isSuccess: false,
+                command: body
+            )
+            return nil
+        }
+    }
+
+    private func tamperSignatureBase64(_ original: String) -> String {
+        guard !original.isEmpty else {
+            return "AA=="
+        }
+        var characters = Array(original)
+        if let index = characters.firstIndex(where: { $0 != "=" }) {
+            characters[index] = characters[index] == "A" ? "B" : "A"
+        }
+        return String(characters)
+    }
+
     // Resets the popup state after the user dismisses it.
     func dismissPopup() {
         sendState = .idle
@@ -217,7 +369,31 @@ final class HomeViewModel: ObservableObject {
         details: String?,
         timestamp: Date,
         isSuccess: Bool,
-        command: CommandBody
+        command: OperationalCommandBody
+    ) {
+        let summary = commandSummary(for: command)
+        recentEvents.insert(
+            RecentEvent(
+                title: title,
+                summary: summary,
+                details: details,
+                timestamp: timestamp,
+                isSuccess: isSuccess
+            ),
+            at: 0
+        )
+        if recentEvents.count > 10 {
+            recentEvents.removeLast(recentEvents.count - 10)
+        }
+    }
+
+    // Adds an enemy emulation event entry and trims the list size.
+    private func appendRecentEvent(
+        title: String,
+        details: String?,
+        timestamp: Date,
+        isSuccess: Bool,
+        command: EnemyCommandBody
     ) {
         let summary = commandSummary(for: command)
         recentEvents.insert(
@@ -236,17 +412,28 @@ final class HomeViewModel: ObservableObject {
     }
 
     // Builds a short, user-friendly summary string for the recent list.
-    private func commandSummary(for command: CommandBody) -> String {
+    private func commandSummary(for command: OperationalCommandBody) -> String {
         let powerText = command.equipmentPower ? "Power ON" : "Power OFF"
-        let controlText = command.controlEnabled ? "Control Enabled" : "Control Disabled"
+        let emulationText = command.enemyEmulation ? "Enemy Emulation ON" : "Enemy Emulation OFF"
         return String(
-            format: "Temp %.1f, Humidity %.1f, Fan %d, Valve %d, %@, %@",
-            command.temperatureSetpointF,
-            command.humiditySetpointPercent,
+            format: "Fan %d, Valve %d, %@, %@",
             Int(command.fanSpeedPercent),
             Int(command.valvePositionPercent),
             powerText,
-            controlText
+            emulationText
+        )
+    }
+
+    // Builds a summary string for enemy command history entries.
+    private func commandSummary(for command: EnemyCommandBody) -> String {
+        let powerText = command.equipmentPower ? "Power ON" : "Power OFF"
+        return String(
+            format: "Enemy Temp %.1f, Humidity %.1f, Fan %.1f, Valve %.1f, %@",
+            command.temperatureSetpointF,
+            command.humiditySetpointPercent,
+            command.fanSpeedPercent,
+            command.valvePositionPercent,
+            powerText
         )
     }
 }
