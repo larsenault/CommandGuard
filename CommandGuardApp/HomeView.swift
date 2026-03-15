@@ -92,20 +92,6 @@ struct HomeView: View {
                                         .foregroundStyle(.secondary)
                                 }
                             }
-                            Section("Temperature Setpoint (°F)") {
-                                HStack {
-                                    Slider(value: $viewModel.temperatureSetpoint, in: 59...86, step: 0.1)
-                                    Text(String(format: "%.1f", viewModel.temperatureSetpoint))
-                                        .frame(width: 50, alignment: .trailing)
-                                }
-                            }
-                            Section("Humidity Setpoint (%)") {
-                                HStack {
-                                    Slider(value: $viewModel.humiditySetpoint, in: 20...60, step: 0.1)
-                                    Text(String(format: "%.1f", viewModel.humiditySetpoint))
-                                        .frame(width: 50, alignment: .trailing)
-                                }
-                            }
                             Section("Fan Speed (%)") {
                                 HStack {
                                     Slider(value: $viewModel.fanSpeed, in: 0...100, step: 1)
@@ -123,7 +109,15 @@ struct HomeView: View {
                             Section {
                                 // Binary command flags.
                                 Toggle("Equipment Power", isOn: $viewModel.equipmentPower)
-                                Toggle("Control Enabled", isOn: $viewModel.controlEnabled)
+                            }
+                            Section("Enemy Emulation") {
+                                NavigationLink("Open Enemy Emulation Screen") {
+                                    EnemyEmulationView(
+                                        viewModel: viewModel,
+                                        nextRequestId: $nextRequestId,
+                                        operatorId: operatorId
+                                    )
+                                }
                             }
                             if viewModel.sendState == .sending, let statusTitle = viewModel.statusTitle {
                                 // Inline status while the command is being sent.
