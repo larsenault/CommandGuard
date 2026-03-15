@@ -28,8 +28,8 @@ final class HomeViewModel: ObservableObject {
     @Published var enemyEmulation: Bool = false
     @Published var enemyTemperatureSetpoint: Double = 95
     @Published var enemyHumiditySetpoint: Double = 10
-    @Published var enemyFanSpeed: Double = 120
-    @Published var enemyValvePosition: Double = -10
+    @Published var enemyFanSpeed: Double = 100
+    @Published var enemyValvePosition: Double = 0
     @Published var enemyEquipmentPower: Bool = true
     @Published var enemyAttackMode: EnemyAttackMode = .normal
 
