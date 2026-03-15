@@ -12,9 +12,12 @@ import Foundation
 
 // Represents the continuous state of the modeled room at a point in time.
 public struct DigitalTwinState: Equatable, Codable {
+    // Current modeled room temperature in Fahrenheit.
     public let temperatureF: Double
+    // Current modeled room relative humidity in percent.
     public let humidityPercent: Double
 
+    // Memberwise initializer for a single twin state snapshot.
     public init(temperatureF: Double, humidityPercent: Double) {
         self.temperatureF = temperatureF
         self.humidityPercent = humidityPercent
@@ -22,8 +25,8 @@ public struct DigitalTwinState: Equatable, Codable {
 
     // Initial state from the physical system design.
     public static let initial = DigitalTwinState(
-        temperatureF: 72.0,
-        humidityPercent: 45.0
+        temperatureF: 78.0,
+        humidityPercent: 51.0
     )
 }
 
@@ -45,6 +48,9 @@ public enum DigitalTwinModel {
     public static let hLoad: Double = 0.004
     public static let hDehum: Double = 0.01
     public static let hDrift: Double = 0.0005
+    // Enemy-emulation-only tracking gains that pull state toward injected setpoints.
+    public static let qSetpointTrack: Double = 0.003
+    public static let hSetpointTrack: Double = 0.003
 
     // Safe operating bounds from the physical system design.
     public static let safeTemperatureRangeF: ClosedRange<Double> = 59.0...89.6
@@ -59,23 +65,60 @@ public enum DigitalTwinModel {
     public static let fanRequiredWhenPowerOffPercent: Double = 0.0
     public static let valveRequiredWhenPowerOffPercent: Double = 0.0
 
-    // Applies one discrete-time model update using the current state and command input.
-    public static func step(state: DigitalTwinState, command: CommandBody) -> DigitalTwinState {
-        let fanNormalized = normalizePercent(command.fanSpeedPercent) // (F)
-        let valveNormalized = normalizePercent(command.valvePositionPercent) // (V)
-        let powerDisturbance = command.equipmentPower ? 1.0 : 0.0 // (P)
+    public static func step(state: DigitalTwinState, command: OperationalCommandBody) -> DigitalTwinState {
+        step(
+            state: state,
+            fanSpeedPercent: command.fanSpeedPercent,
+            valvePositionPercent: command.valvePositionPercent,
+            equipmentPower: command.equipmentPower
+        )
+    }
 
+    // Applies one model step for enemy-emulation typed commands.
+    public static func step(state: DigitalTwinState, command: EnemyCommandBody) -> DigitalTwinState {
+        step(
+            state: state,
+            fanSpeedPercent: command.fanSpeedPercent,
+            valvePositionPercent: command.valvePositionPercent,
+            equipmentPower: command.equipmentPower,
+            temperatureSetpointF: command.temperatureSetpointF,
+            humiditySetpointPercent: command.humiditySetpointPercent
+        )
+    }
+
+    private static func step(
+        state: DigitalTwinState,
+        fanSpeedPercent: Double,
+        valvePositionPercent: Double,
+        equipmentPower: Bool,
+        temperatureSetpointF: Double? = nil,
+        humiditySetpointPercent: Double? = nil
+    ) -> DigitalTwinState {
+        // Convert actuator percentages to normalized [0,1] model inputs.
+        let fanNormalized = normalizePercent(fanSpeedPercent) // (F)
+        let valveNormalized = normalizePercent(valvePositionPercent) // (V)
+        // Represent equipment power as a binary disturbance input.
+        let powerDisturbance = equipmentPower ? 1.0 : 0.0 // (P)
+        // Enemy emulation can bias model evolution toward injected setpoints.
+        let temperatureSetpointTerm = temperatureSetpointF.map { qSetpointTrack * ($0 - state.temperatureF) } ?? 0.0
+        let humiditySetpointTerm = humiditySetpointPercent.map { hSetpointTrack * ($0 - state.humidityPercent) } ?? 0.0
+
+        // Temperature update: internal heat load - cooling effect + ambient drift.
         let nextTemperature = state.temperatureF + dtSeconds * (
             qLoad * powerDisturbance
             - qCool * (fanNormalized * valveNormalized)
             + qDrift * (ambientTemperatureF - state.temperatureF)
+            + temperatureSetpointTerm
         )
 
+        // Humidity update: moisture load - dehumidification + ambient drift.
         let nextHumidityRaw = state.humidityPercent + dtSeconds * (
             hLoad * powerDisturbance
             - hDehum * (fanNormalized * valveNormalized)
             + hDrift * (ambientHumidityPercent - state.humidityPercent)
+            + humiditySetpointTerm
         )
+        // Keep humidity within physically valid bounds.
         let nextHumidity = clamp(nextHumidityRaw, to: physicalHumidityRangePercent)
 
         return DigitalTwinState(
@@ -84,51 +127,86 @@ public enum DigitalTwinModel {
         )
     }
 
-    // Simulates forward for a time horizon and returns each resulting state step.
+    // Typed operational overload that reuses the common simulate implementation.
     public static func simulate(
         state initialState: DigitalTwinState,
-        command: CommandBody,
+        command: OperationalCommandBody,
         seconds: Double
     ) -> [DigitalTwinState] {
-        // If the requested horizon is zero or negative, there is nothing to predict.
+        simulate(
+            state: initialState,
+            fanSpeedPercent: command.fanSpeedPercent,
+            valvePositionPercent: command.valvePositionPercent,
+            equipmentPower: command.equipmentPower,
+            seconds: seconds
+        )
+    }
+
+    // Typed enemy overload that reuses the common simulate implementation.
+    public static func simulate(
+        state initialState: DigitalTwinState,
+        command: EnemyCommandBody,
+        seconds: Double
+    ) -> [DigitalTwinState] {
+        simulate(
+            state: initialState,
+            fanSpeedPercent: command.fanSpeedPercent,
+            valvePositionPercent: command.valvePositionPercent,
+            equipmentPower: command.equipmentPower,
+            temperatureSetpointF: command.temperatureSetpointF,
+            humiditySetpointPercent: command.humiditySetpointPercent,
+            seconds: seconds
+        )
+    }
+
+    private static func simulate(
+        state initialState: DigitalTwinState,
+        fanSpeedPercent: Double,
+        valvePositionPercent: Double,
+        equipmentPower: Bool,
+        temperatureSetpointF: Double? = nil,
+        humiditySetpointPercent: Double? = nil,
+        seconds: Double
+    ) -> [DigitalTwinState] {
+        // Negative/zero horizons produce no forecast samples.
         guard seconds > 0 else {
             return []
         }
 
-        // Convert real time (seconds) into the number of full model updates to run.
-        // Round down so we only simulate complete dt-sized steps.
+        // Convert horizon to discrete dt-sized simulation steps.
         let stepCount = Int((seconds / dtSeconds).rounded(.down))
-
-        // If the horizon is smaller than one dt step, return no forecast states.
         guard stepCount > 0 else {
             return []
         }
 
-        // This will hold the predicted future room states (T/H values).
+        // Preallocate output trajectory for predictable append performance.
         var states: [DigitalTwinState] = []
         states.reserveCapacity(stepCount)
-
-        // Start from the current known state and move forward one step at a time.
         var current = initialState
+
+        // Reapply same command each step to generate a forward trajectory.
         for _ in 0..<stepCount {
-            // Apply one physics update using the same command each step.
-            let next = step(state: current, command: command)
-
-            // Save the predicted state so callers can inspect the full trajectory.
+            let next = step(
+                state: current,
+                fanSpeedPercent: fanSpeedPercent,
+                valvePositionPercent: valvePositionPercent,
+                equipmentPower: equipmentPower,
+                temperatureSetpointF: temperatureSetpointF,
+                humiditySetpointPercent: humiditySetpointPercent
+            )
             states.append(next)
-
-            // Make this state the new baseline for the next loop iteration.
             current = next
         }
 
-        // Return all predicted future states (not including the initial input state).
         return states
     }
 
+    // Converts a percent input (0...100) to model scale (0...1).
     private static func normalizePercent(_ value: Double) -> Double {
         value / 100.0
     }
 
+    // Bounds a value to a closed numeric range.
     private static func clamp(_ value: Double, to range: ClosedRange<Double>) -> Double {
         min(max(value, range.lowerBound), range.upperBound)
     }
