@@ -21,7 +21,7 @@ The project consists of:
 
 ```
 ┌────────────┐     Signed Command     ┌────────────────┐     Validated Command
-│   iOS App  │ ───────────────────▶ │  macOS Gateway  │ ───────────────────▶ │  Simulated ICS
+│   iOS App  │ ───────────────────▶ │  macOS Gateway  │ ───────────────────▶ │  MODBUS Print-out
 └────────────┘                        └────────────────┘
                                            │
                                            ▼
@@ -74,11 +74,11 @@ Each command is canonicalized, signed (ECDSA P-256 / SHA-256), timestamped, nonc
 </a>
 
 <a href="CommandGuardApp/images/macos-acceptedcommand.png">
-  <img src="CommandGuardApp/images/macos-acceptedcommand.png" width="400">
+  <img src="CommandGuardApp/images/macos-acceptedcommand.png" width="500">
 </a>
 
-<a href="CommandGuardApp/images/macos-rejectedcommand.png">
-  <img src="CommandGuardApp/images/macos-rejectedcommand.png" width="400">
+<a href="CommandGuardApp/images/macos-rejectedcommands.png">
+  <img src="CommandGuardApp/images/macos-rejectedcommands.png" width="500">
 </a>
 ---
 
