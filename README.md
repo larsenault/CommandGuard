@@ -35,12 +35,13 @@ The project consists of:
 The iOS app simulates a mobile operator interface for a data center cooling system.
 
 **Supported Parameters**
-- Temperature Setpoint (°F)
-- Humidity Setpoint (%)
+- Temperature Setpoint (°F) (In Enemy Emulator)
+- Humidity Setpoint (%) (In Enemy Emulator)
 - Fan Speed (%)
 - Valve Position (%)
 - Equipment Power
-- Control Enabled
+- Replay Nonce (In Enemy Emulator)
+- Invalid Signature (In Enemy Emulator)
 
 Each command is canonicalized, signed (ECDSA P-256 / SHA-256), timestamped, nonced, and logged. Below are screenshots showing the UI of the iOS app. 
 
@@ -52,7 +53,33 @@ Each command is canonicalized, signed (ECDSA P-256 / SHA-256), timestamped, nonc
   <img src="CommandGuardApp/images/ios-history.png" width="400">
 </a>
 
+<a href="CommandGuardApp/images/ios-enemyemulation.png">
+  <img src="CommandGuardApp/images/ios-enemyemulation.png" width="400">
+</a>
 
+<a href="CommandGuardApp/images/ios-acceptedcommand.png">
+  <img src="CommandGuardApp/images/ios-acceptedcommand.png" width="400">
+</a>
+
+<a href="CommandGuardApp/images/ios-invalidsignature.png">
+  <img src="CommandGuardApp/images/ios-invalidsignature.png" width="400">
+</a>
+
+<a href="CommandGuardApp/images/ios-noncereplay.png">
+  <img src="CommandGuardApp/images/ios-noncereplay.png" width="400">
+</a>
+
+<a href="CommandGuardApp/images/ios-outofbounds.png">
+  <img src="CommandGuardApp/images/ios-outofbounds.png" width="400">
+</a>
+
+<a href="CommandGuardApp/images/macos-acceptedcommand.png">
+  <img src="CommandGuardApp/images/macos-acceptedcommand.png" width="400">
+</a>
+
+<a href="CommandGuardApp/images/macos-rejectedcommand.png">
+  <img src="CommandGuardApp/images/macos-rejectedcommand.png" width="400">
+</a>
 ---
 
 ## 🖥️ macOS Verification Gateway
@@ -89,26 +116,40 @@ Commands are evaluated against a simulated ICS state to ensure physical safety, 
 ## 📂 Project Structure
 
 ```
-├── CommandGuardApp.swift        # App entry point and SwiftData container setup
-├── HomeView.swift               # Main UI for building and sending commands
-├── HomeViewModel.swift          # State management and send flow orchestration
-├── CommandModels.swift          # Command body, envelope, signature models, and helpers
-├── CryptoSigner.swift           # Keychain-backed ECDSA P-256 / SHA-256 signer
-├── CommandSendService.swift     # Simulated gateway send/response logic
-├── GatewayService.swift         # Model for a discovered Bonjour gateway with stable IDs and display names
-├── BonjourBrowser.swift         # Bonjour browsing helper that discovers gateway services on the local network
-├── GatewayResponse.swift        # Response models for gateway delivery/execution status and NDJSON parsing
-├── RecentCommandsView.swift     # Recent command history UI
-├── SendStatus.swift             # Send state and status styling helpers
-├── Item.swift                   # Default SwiftData model from the Xcode template
-├── CommandGuardGatewayApp.swift # macOS gateway app entry point
-├── ContentView.swift            # macOS gateway UI (status + inbox)
-├── GatewayInbox.swift           # Stores decoded commands for display
-├── GatewayListener.swift        # TCP listener that receives NDJSON commands
-├── GatewaySignatureVerifier.swift # Verifies signed command envelopes
-├── GatewayKeyStore.swift        # Trusted public keys for verification
-├── GatewayResponse.swift        # Gateway response payload model
-└── images/                      # README screenshots
+├── CommandGuardApp.swift                  # iOS app entry point and SwiftData container setup
+├── HomeView.swift                         # Main iOS UI for building and sending commands
+├── HomeViewModel.swift                    # iOS state management and send flow orchestration
+├── Shared/CommandModels.swift             # Shared command body/envelope/signature models and helpers
+├── CryptoSigner.swift                     # Keychain-backed ECDSA P-256 / SHA-256 signer
+├── CommandSendService.swift               # iOS send pipeline to gateway and response handling
+├── GatewayService.swift                   # Discovered Bonjour gateway model (stable ID/display name)
+├── BonjourBrowser.swift                   # Bonjour discovery helper for local gateway services
+├── GatewayResponse.swift                  # iOS-side gateway response models and NDJSON parsing
+├── EnemyEmulationView.swift               # iOS adversarial testing/emulation UI
+├── RecentCommandsView.swift               # iOS recent command history UI
+├── SendStatus.swift                       # Send state enum and UI status styling helpers
+├── Item.swift                             # Default SwiftData template model (iOS)
+├── Info-iOS.plist                         # iOS target Info.plist configuration
+├── Assets.xcassets                        # iOS target asset catalog
+├── images/ios-home.png                    # README screenshot: iOS home screen
+├── images/ios-history.png                 # README screenshot: iOS history screen
+
+├── CommandGuardGatewayApp.swift           # macOS gateway app entry point
+├── ContentView.swift                      # macOS gateway UI (status + inbox display)
+├── GatewayListener.swift                  # TCP listener for incoming NDJSON command envelopes
+├── GatewayInbox.swift                     # In-memory/storage model for decoded received commands
+├── GatewaySignatureVerifier.swift         # Signature verification for command envelopes
+├── GatewayKeyStore.swift                  # Trusted public key store used by verifier
+├── GatewayCommandValidator.swift          # Gateway-side command policy/validation rules
+├── GatewayResponse.swift                  # Gateway-side response payload model
+├── Item.swift                             # Default SwiftData template model (macOS)
+├── Info-MacOS.plist                       # macOS target Info.plist configuration
+├── CommandGuardGateway.entitlements       # macOS gateway entitlements/capabilities
+├── Assets.xcassets                        # macOS target asset catalog
+
+├── CommandModels.swift     # Shared command body/envelope/signature models and helpers
+├── GatewayCommand.swift    # Shared gateway command type(s) used across targets
+└── DigitalTwinModel.swift  # Shared digital twin domain/state model
 ```
 
 ---
@@ -125,4 +166,6 @@ Academic and research use.
 
 ## AI Usage
 
-This file was assisted by AI in making more consice descriptions and beautifying aspects of the ReadMe. All AI-generated content was reviewed, tested for correctness, and verified by Luke Arsenault.
+All files in this project were developed with the assistance of the generative AI tool ChatGPT. All pieces of the files have been assisted by AI.
+All AI-generated content was reviewed for understanding and cleanliness, tested for correctness and expected results,
+and verified by Luke Arsenault.
