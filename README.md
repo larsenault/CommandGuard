@@ -45,6 +45,14 @@ The iOS app simulates a mobile operator interface for a data center cooling syst
 
 Each command is canonicalized, signed (ECDSA P-256 / SHA-256), timestamped, nonced, and logged. Below are screenshots showing the UI of the iOS app. 
 
+---
+
+## 🖥️ macOS Verification Gateway
+
+The gateway verifies cryptographic authenticity, prevents replay attacks, simulates commands via a digital twin, and enforces safety thresholds before forwarding or blocking commands.
+
+---
+
 <a href="CommandGuardApp/images/ios-home.png">
   <img src="CommandGuardApp/images/ios-home.png" width="400">
 </a>
@@ -83,15 +91,9 @@ Each command is canonicalized, signed (ECDSA P-256 / SHA-256), timestamped, nonc
 
 ---
 
-## 🖥️ macOS Verification Gateway
-
-The gateway verifies cryptographic authenticity, prevents replay attacks, simulates commands via a digital twin, and enforces safety thresholds before forwarding or blocking commands.
-
----
-
 ## 🧪 Digital Twin & Safety Enforcement
 
-Commands are evaluated against a simulated ICS state to ensure physical safety, not just cryptographic correctness.
+Commands are evaluated against a simulated ICS state to ensure physical safety, not just cryptographic correctness. The Digital Twin updates every 5 seconds (dt) and shows the forecasted room state, 300 seconds in the future. 
 
 ---
 
