@@ -288,6 +288,7 @@ private struct CommandRow: View {
                 .foregroundStyle(.secondary)
             // Render parsed command body values.
             CommandValuesView(payload: command.payload)
+            ModbusTCPFramesView(frames: command.modbusTCPFrames)
         }
         .padding(.vertical, 4)
     }
@@ -321,6 +322,30 @@ private struct CommandValuesView: View {
             }
         }
         .font(.caption)
+    }
+}
+
+// Renders the Modbus TCP frames generated from a command when available.
+private struct ModbusTCPFramesView: View {
+    // MARK: - Inputs
+    // Optional Modbus TCP frame metadata attached to the command.
+    let frames: GatewayInbox.ModbusTCPFrames?
+
+    // MARK: - View
+    // Displays register and power write frames with transaction IDs and hex payloads.
+    var body: some View {
+        Group {
+            if let frames {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Modbus TCP:")
+                        .font(.caption.weight(.semibold))
+                    Text("Registers (TX \(frames.registerTransactionId)): \(frames.registerFrameHex)")
+                    Text("Power (TX \(frames.powerTransactionId)): \(frames.powerFrameHex)")
+                }
+                .font(.caption.monospaced())
+                .padding(.top, 2)
+            }
+        }
     }
 }
 
