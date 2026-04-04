@@ -11,7 +11,7 @@ import Foundation
 
 // Central source of truth for translating operational JSON fields into Modbus addresses and write strategy.
 enum ModbusRegisterMap {
-    // Unit identifier used in Modbus RTU and Modbus TCP requests.
+    // Unit identifier used in Modbus TCP requests.
     static let unitId: UInt8 = 1
 
     // Holding registers (4xxxx)
@@ -19,6 +19,10 @@ enum ModbusRegisterMap {
     static let fanSpeedRegisterAddress: UInt16 = 0x0000
     // valvePositionPercent -> 40002 (zero-based address 0x0001)
     static let valvePositionRegisterAddress: UInt16 = 0x0001
+    // temperatureSetpointF -> 40003 (zero-based address 0x0002)
+    static let temperatureSetpointRegisterAddress: UInt16 = 0x0002
+    // humiditySetpointPercent -> 40004 (zero-based address 0x0003)
+    static let humiditySetpointRegisterAddress: UInt16 = 0x0003
 
     // Coils (0xxxx)
     // equipmentPower -> 00001 (zero-based address 0x0000)
@@ -39,6 +43,12 @@ enum ModbusRegisterMap {
     static func scaledPercentToRegister(_ percent: Double) -> UInt16 {
         let clamped = min(max(percent, percentMinimum), percentMaximum)
         return UInt16(clamped.rounded())
+    }
+
+    // Converts a whole numeric value into a UInt16 register, clamped to valid register range.
+    static func scaledWholeValueToRegister(_ value: Double) -> UInt16 {
+        let clamped = min(max(value.rounded(), 0), Double(UInt16.max))
+        return UInt16(clamped)
     }
 
     // Modbus coil on/off representations used by FC05.
