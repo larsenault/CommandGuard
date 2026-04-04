@@ -22,13 +22,39 @@ final class GatewayInbox: ObservableObject {
         case enemy(EnemyCommandBody)
     }
 
+    struct ModbusTCPFrames {
+        let registerTransactionId: UInt16
+        let registerFrameHex: String
+        let powerTransactionId: UInt16
+        let powerFrameHex: String
+    }
+
     struct ReceivedCommand: Identifiable {
-        let id = UUID()
+        let id: UUID
         let timestamp: String
         let requestId: Int
         let operatorId: String
         let intent: CommandIntent
         let payload: CommandPayload
+        let modbusTCPFrames: ModbusTCPFrames?
+
+        init(
+            id: UUID = UUID(),
+            timestamp: String,
+            requestId: Int,
+            operatorId: String,
+            intent: CommandIntent,
+            payload: CommandPayload,
+            modbusTCPFrames: ModbusTCPFrames? = nil
+        ) {
+            self.id = id
+            self.timestamp = timestamp
+            self.requestId = requestId
+            self.operatorId = operatorId
+            self.intent = intent
+            self.payload = payload
+            self.modbusTCPFrames = modbusTCPFrames
+        }
     }
 
     struct CommandRecord: Identifiable {
