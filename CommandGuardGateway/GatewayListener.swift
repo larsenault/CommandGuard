@@ -155,9 +155,12 @@ final class GatewayListener: ObservableObject {
                     try self.verifySignature(for: envelope)
                 }
                 let acceptedTwinState = await self.commandValidator.acceptValidatedCommand(validationOutcome, now: Date())
+                let modbusTCPFrames = self.makeModbusTCPFrames(from: envelope)
                 await MainActor.run {
                     // Only append after all validation and verification succeed.
-                    self.inbox.appendAccepted(command: self.makeReceivedCommand(from: envelope))
+                    self.inbox.appendAccepted(
+                        command: self.makeReceivedCommand(from: envelope, modbusTCPFrames: modbusTCPFrames)
+                    )
                     self.inbox.updateTwinStatus(
                         currentState: acceptedTwinState,
                         predictedStates: validationOutcome.predictedStates,
@@ -304,7 +307,10 @@ final class GatewayListener: ObservableObject {
     }
 
     // Converts a validated envelope into the UI-friendly inbox model used across dashboard views.
-    private func makeReceivedCommand(from envelope: GatewayCommandValidator.ValidatedEnvelope) -> GatewayInbox.ReceivedCommand {
+    private func makeReceivedCommand(
+        from envelope: GatewayCommandValidator.ValidatedEnvelope,
+        modbusTCPFrames: GatewayInbox.ModbusTCPFrames? = nil
+    ) -> GatewayInbox.ReceivedCommand {
         switch envelope {
         case let .operational(operationalEnvelope):
             return GatewayInbox.ReceivedCommand(
@@ -312,7 +318,8 @@ final class GatewayListener: ObservableObject {
                 requestId: operationalEnvelope.requestId,
                 operatorId: operationalEnvelope.operatorId,
                 intent: .operational,
-                payload: .operational(operationalEnvelope.command)
+                payload: .operational(operationalEnvelope.command),
+                modbusTCPFrames: modbusTCPFrames
             )
         case let .enemy(enemyEnvelope):
             return GatewayInbox.ReceivedCommand(
@@ -320,9 +327,30 @@ final class GatewayListener: ObservableObject {
                 requestId: enemyEnvelope.requestId,
                 operatorId: enemyEnvelope.operatorId,
                 intent: .enemyEmulation,
-                payload: .enemy(enemyEnvelope.command)
+                payload: .enemy(enemyEnvelope.command),
+                modbusTCPFrames: modbusTCPFrames
             )
         }
+    }
+
+    // Builds Modbus TCP frame metadata for accepted operational and enemy commands.
+    private func makeModbusTCPFrames(
+        from envelope: GatewayCommandValidator.ValidatedEnvelope
+    ) -> GatewayInbox.ModbusTCPFrames? {
+        let encodedFrames: ModbusTCPEncoder.EncodedOperationalFrames
+        switch envelope {
+        case let .operational(operationalEnvelope):
+            encodedFrames = ModbusTCPEncoder.encodeOperational(operationalEnvelope.command)
+        case let .enemy(enemyEnvelope):
+            encodedFrames = ModbusTCPEncoder.encodeEnemy(enemyEnvelope.command)
+        }
+
+        return GatewayInbox.ModbusTCPFrames(
+            registerTransactionId: encodedFrames.registerFrame.transactionId,
+            registerFrameHex: encodedFrames.registerFrame.hexString,
+            powerTransactionId: encodedFrames.powerFrame.transactionId,
+            powerFrameHex: encodedFrames.powerFrame.hexString
+        )
     }
 
     // Best-effort payload decode used on failures so rejected attempts can still appear in history.
