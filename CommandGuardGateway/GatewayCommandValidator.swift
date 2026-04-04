@@ -389,12 +389,30 @@ final class GatewayCommandValidator {
 
     // Runs command policy rules and forward prediction against safe operating bounds.
     private func validatePhysicalSafety(command: CommandForSafety, currentTwinState: DigitalTwinState) async throws -> [DigitalTwinState] {
-        // Enemy emulation bypasses actuator policy checks, but still must pass forecast safety bounds.
+        // Power-off actuator constraints apply to both operational and enemy commands.
+        try validatePowerOffActuatorRule(command: command)
+
+        // Enemy emulation bypasses power-on actuator policy checks, but still must pass forecast safety bounds.
         if case .enemy = command {
             return try await validatePredictionBounds(command: command, currentTwinState: currentTwinState)
         }
         try await validatePolicyRules(command: command)
         return try await validatePredictionBounds(command: command, currentTwinState: currentTwinState)
+    }
+
+    // Enforces that fan and valve must both be zero whenever equipment power is off.
+    private func validatePowerOffActuatorRule(command: CommandForSafety) throws {
+        let actuator = extractActuatorValues(from: command)
+        guard actuator.power == false else {
+            return
+        }
+
+        if abs(actuator.fan) > zeroTolerance {
+            throw CommandSchemaError.fanMustBeZeroWhenPowerOff(actuator.fan)
+        }
+        if abs(actuator.valve) > zeroTolerance {
+            throw CommandSchemaError.valveMustBeZeroWhenPowerOff(actuator.valve)
+        }
     }
 
     // Enforces fan/valve constraints for power ON and OFF modes.
