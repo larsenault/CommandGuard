@@ -82,7 +82,7 @@ The gateway verifies cryptographic authenticity, prevents replay attacks, simula
 </a>
 
 <a href="CommandGuardApp/images/macos-acceptedcommand.png">
-  <img src="CommandGuardApp/images/macos-acceptedcommand.png" width="500">
+  <img src="CommandGuardApp/images/macos-modbuscommand.png" width="500">
 </a>
 
 <a href="CommandGuardApp/images/macos-rejectedcommands.png">
