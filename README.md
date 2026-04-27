@@ -150,9 +150,12 @@ Commands are evaluated against a simulated ICS state to ensure physical safety, 
 ├── CommandGuardGateway.entitlements       # macOS gateway entitlements/capabilities
 ├── Assets.xcassets                        # macOS target asset catalog
 
-├── CommandModels.swift     # Shared command body/envelope/signature models and helpers
-├── GatewayCommand.swift    # Shared gateway command type(s) used across targets
-└── DigitalTwinModel.swift  # Shared digital twin domain/state model
+├── CommandModels.swift      # Shared command body/envelope/signature models and helpers
+├── GatewayCommand.swift     # Shared gateway command type(s) used across targets
+├── DigitalTwinModel.swift   # Shared digital twin domain/state model
+├── ModbusRegisterMap.swift  # Shared register addresses and metadata for MODBUS mapping
+├── ModbusModels.swift       # Shared MODBUS request/response and payload data models
+└── ModbusEncoder.swift      # Shared encoder for converting commands into MODBUS frames
 ```
 
 ---
